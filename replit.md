@@ -116,6 +116,22 @@ The application features a modular Python architecture comprising:
       - Worker exits after queue completion, requires manual restart
       - **Root cause**: Autoscale designed for bursty request/response workloads, incompatible with long-running scraping
       - **Solution**: Migrate to Reserved VM for 24/7 uninterrupted processing (see below)
+      
+    - **Ingredient Canonicalization System** (added January 2026):
+      - **Purpose**: Clean up and categorize 7,262 unique ingredients with synonym grouping
+      - **Architecture**: Mapping layer on top of existing `ingredient_analysis` table (unchanged)
+      - **Database Tables**:
+        - `ingredient_canonical`: Stores canonical ingredients with `type` (natural/processed/uncategorized) and Latvian description
+        - `ingredient_mapping`: Maps `ingredient_analysis.id` → `canonical_id` (first ID in synonym group becomes canonical)
+        - `product_ingredients_display`: Materialized view for fast product card queries
+      - **Import Process**:
+        - CSV format: `id|ingredient|category|type` where id contains synonym IDs separated by `!`
+        - Category A → natural, Category B → processed
+        - Supports duplicate handling (skip existing option)
+        - UI in Streamlit "Ingredients" tab
+      - **Auto-categorization**: New ingredients during scraping automatically get uncategorized canonical entries
+      - **Display**: Product Browser shows ingredients with type indicators (natural/processed/uncategorized)
+      - **Refresh**: Call `refresh_product_ingredients_display()` after imports
 
 ## External Dependencies
 - **Streamlit**: Web application framework.
