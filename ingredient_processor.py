@@ -384,7 +384,9 @@ class IngredientProcessor:
                     """
                     insert_result = self._execute_query(insert_query, (normalized_name,), fetch=True)
                     if insert_result and len(insert_result) > 0:
-                        return insert_result[0]['id']
+                        new_id = insert_result[0]['id']
+                        self._auto_create_uncategorized_canonical(new_id, normalized_name)
+                        return new_id
                 
                 except Exception as insert_error:
                     # If insert fails, try one more time to get existing
@@ -407,6 +409,32 @@ class IngredientProcessor:
         
         return None
     
+    def _auto_create_uncategorized_canonical(self, ingredient_id: int, ingredient_name: str):
+        """Auto-create uncategorized canonical entry for new ingredients not yet mapped"""
+        try:
+            check_query = "SELECT 1 FROM ingredient_mapping WHERE ingredient_id = %s"
+            result = self._execute_query(check_query, (ingredient_id,), fetch=True)
+            
+            if result and len(result) > 0:
+                return
+            
+            canonical_insert = """
+                INSERT INTO ingredient_canonical (canonical_id, name, type, description)
+                VALUES (%s, %s, 'uncategorized', 'Auto-created - needs categorization')
+                ON CONFLICT (canonical_id) DO NOTHING
+            """
+            self._execute_query(canonical_insert, (ingredient_id, ingredient_name))
+            
+            mapping_insert = """
+                INSERT INTO ingredient_mapping (ingredient_id, canonical_id)
+                VALUES (%s, %s)
+                ON CONFLICT (ingredient_id) DO NOTHING
+            """
+            self._execute_query(mapping_insert, (ingredient_id, ingredient_id))
+            
+        except Exception as e:
+            self.status_callback(f"Warning: Could not auto-create canonical for {ingredient_name}: {str(e)}")
+
     def _create_ingredient_mapping(self, ingredient_id: int, sku: str):
         """Create product-ingredient mapping"""
         try:

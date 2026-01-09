@@ -578,6 +578,55 @@ def render_product_detail_view():
         st.subheader("📝 Sastāvdaļas")
         st.write(product['ingredients_text'])
     
+    # Canonical Ingredients with Type Indicators
+    try:
+        sku = product.get('sku')
+        if sku:
+            canonical_query = """
+                SELECT display_name, ingredient_type, type_description
+                FROM product_ingredients_display
+                WHERE product_sku = %s
+                ORDER BY ingredient_type, display_name
+            """
+            db._ensure_connection()
+            with db.connection.cursor() as cur:
+                cur.execute(canonical_query, (sku,))
+                canonical_ingredients = cur.fetchall()
+            
+            if canonical_ingredients:
+                st.subheader("🧪 Ingredientu analīze")
+                
+                natural_list = []
+                processed_list = []
+                uncategorized_list = []
+                
+                for ing in canonical_ingredients:
+                    name = ing[0] if ing[0] else "Unknown"
+                    ing_type = ing[1] if ing[1] else "uncategorized"
+                    
+                    if ing_type == 'natural':
+                        natural_list.append(f"🌿 {name}")
+                    elif ing_type == 'processed':
+                        processed_list.append(f"🏭 {name}")
+                    else:
+                        uncategorized_list.append(f"❓ {name}")
+                
+                if natural_list:
+                    st.markdown("**Dabiski:** " + ", ".join(natural_list[:10]))
+                    if len(natural_list) > 10:
+                        st.caption(f"...un vēl {len(natural_list) - 10}")
+                
+                if processed_list:
+                    st.markdown("**Apstrādāti:** " + ", ".join(processed_list[:10]))
+                    if len(processed_list) > 10:
+                        st.caption(f"...un vēl {len(processed_list) - 10}")
+                
+                if uncategorized_list:
+                    with st.expander(f"Nekategorizēti ({len(uncategorized_list)})"):
+                        st.write(", ".join(uncategorized_list))
+    except Exception as e:
+        pass
+    
     # Country of Origin
     if product.get('country_of_origin') and product.get('country_of_origin') != 'Unknown':
         st.subheader("🌍 Izcelsmes valsts")
@@ -1243,31 +1292,126 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
         return {'success': False, 'message': str(e)}
 
 
+def section_ingredient_import():
+    """Section: Ingredient Canonicalization Import"""
+    from ingredient_canonical_import import IngredientCanonicalImporter
+    
+    st.header("🧪 Ingredient Canonicalization")
+    
+    importer = IngredientCanonicalImporter()
+    
+    stats = importer.get_import_stats()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Canonical", stats['total_canonical'])
+    with col2:
+        natural_count = stats['type_counts'].get('natural', 0)
+        st.metric("Natural", natural_count)
+    with col3:
+        processed_count = stats['type_counts'].get('processed', 0)
+        st.metric("Processed", processed_count)
+    with col4:
+        st.metric("Coverage", f"{stats['coverage_percent']}%")
+    
+    st.caption(f"Mapped: {stats['total_mappings']} / {stats['total_ingredients']} ingredients | Unmapped: {stats['unmapped_count']}")
+    
+    st.divider()
+    
+    st.subheader("Import CSV File")
+    st.markdown("""
+    **CSV Format:** `id|ingredient|category|type`
+    - **id**: Synonym IDs separated by `!` (first becomes canonical)
+    - **ingredient**: Canonical name
+    - **category**: `A` (natural) or `B` (processed)  
+    - **type**: Latvian description
+    """)
+    
+    uploaded_file = st.file_uploader("Upload CSV file", type=['csv', 'txt'])
+    
+    skip_existing = st.checkbox("Skip existing entries (recommended)", value=True)
+    
+    if uploaded_file is not None:
+        content = uploaded_file.read().decode('utf-8')
+        records = importer.parse_csv_content(content)
+        
+        if records:
+            st.success(f"Parsed {len(records)} ingredient groups from file")
+            
+            with st.expander("Preview parsed records", expanded=False):
+                for i, rec in enumerate(records[:10]):
+                    type_emoji = "🌿" if rec['type'] == 'natural' else "🏭"
+                    st.markdown(f"{type_emoji} **{rec['name']}** ({rec['type']}) - IDs: {rec['synonym_ids'][:3]}{'...' if len(rec['synonym_ids']) > 3 else ''}")
+                if len(records) > 10:
+                    st.caption(f"... and {len(records) - 10} more")
+            
+            if st.button("Import Records", type="primary"):
+                with st.spinner("Importing..."):
+                    result = importer.import_records(records, skip_existing=skip_existing)
+                
+                if result['imported_canonical'] > 0 or result['imported_mappings'] > 0:
+                    st.success(f"Imported {result['imported_canonical']} canonical entries and {result['imported_mappings']} mappings")
+                
+                if result['skipped_canonical'] > 0:
+                    st.info(f"Skipped {result['skipped_canonical']} existing canonical entries")
+                
+                if result['invalid_ids']:
+                    st.warning(f"Invalid IDs (not in ingredient_analysis): {result['invalid_ids'][:10]}")
+                
+                if result['errors']:
+                    for err in result['errors'][:5]:
+                        st.error(err)
+                
+                with st.spinner("Refreshing materialized view..."):
+                    if importer.refresh_materialized_view():
+                        st.success("Materialized view refreshed")
+                    else:
+                        st.warning("Could not refresh materialized view")
+                
+                st.rerun()
+        else:
+            st.error("Could not parse any records from the file")
+    
+    st.divider()
+    
+    st.subheader("Unmapped Ingredients")
+    st.caption("Top unmapped ingredients by frequency (need categorization)")
+    
+    unmapped = importer.get_unmapped_ingredients(limit=50)
+    
+    if unmapped:
+        unmapped_text = "\n".join([f"{u['id']}|{u['ingredient']}||" for u in unmapped[:50]])
+        st.text_area("Copy for Google AI Studio (id|ingredient|category|type)", unmapped_text, height=300)
+        st.caption(f"Showing top 50 of {stats['unmapped_count']} unmapped ingredients")
+    else:
+        st.success("All ingredients are mapped!")
+
+
 def main():
     st.title("🛒 Rimi Product Scraper")
     
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     
     with col1:
-        if st.button("📦 Category Processing", use_container_width=True, 
+        if st.button("📦 Categories", use_container_width=True, 
                      type="primary" if st.session_state.view_mode == 'category_processing' else "secondary"):
             st.session_state.view_mode = 'category_processing'
             st.rerun()
     
     with col2:
-        if st.button("🛍️ Product Browser", use_container_width=True,
+        if st.button("🛍️ Products", use_container_width=True,
                      type="primary" if st.session_state.view_mode == 'product_view' else "secondary"):
             st.session_state.view_mode = 'product_view'
             st.rerun()
     
     with col3:
-        if st.button("🥗 Nutrition Enrichment", use_container_width=True,
+        if st.button("🥗 Nutrition", use_container_width=True,
                      type="primary" if st.session_state.view_mode == 'nutrition_enrichment' else "secondary"):
             st.session_state.view_mode = 'nutrition_enrichment'
             st.rerun()
     
     with col4:
-        if st.button("📊 Change Report", use_container_width=True,
+        if st.button("📊 Changes", use_container_width=True,
                      type="primary" if st.session_state.view_mode == 'change_report' else "secondary"):
             st.session_state.view_mode = 'change_report'
             st.rerun()
@@ -1276,6 +1420,12 @@ def main():
         if st.button("🔄 Nutri-Score", use_container_width=True,
                      type="primary" if st.session_state.view_mode == 'nutriscore_recalc' else "secondary"):
             st.session_state.view_mode = 'nutriscore_recalc'
+            st.rerun()
+    
+    with col6:
+        if st.button("🧪 Ingredients", use_container_width=True,
+                     type="primary" if st.session_state.view_mode == 'ingredient_import' else "secondary"):
+            st.session_state.view_mode = 'ingredient_import'
             st.rerun()
     
     st.divider()
@@ -1288,6 +1438,8 @@ def main():
         section_change_report()
     elif st.session_state.view_mode == 'nutriscore_recalc':
         section_nutriscore_recalculation()
+    elif st.session_state.view_mode == 'ingredient_import':
+        section_ingredient_import()
     else:
         section_nutrition_enrichment()
 
