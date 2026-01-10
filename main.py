@@ -601,8 +601,8 @@ def render_product_detail_view():
                 uncategorized_list = []
                 
                 for ing in canonical_ingredients:
-                    name = ing[0] if ing[0] else "Unknown"
-                    ing_type = ing[1] if ing[1] else "uncategorized"
+                    name = ing['display_name'] if ing.get('display_name') else "Unknown"
+                    ing_type = ing['ingredient_type'] if ing.get('ingredient_type') else "uncategorized"
                     
                     if ing_type == 'natural':
                         natural_list.append(f"🌿 {name}")
@@ -625,7 +625,7 @@ def render_product_detail_view():
                     with st.expander(f"Nekategorizēti ({len(uncategorized_list)})"):
                         st.write(", ".join(uncategorized_list))
     except Exception as e:
-        pass
+        st.error(f"Error loading ingredients: {e}")
     
     # Country of Origin
     if product.get('country_of_origin') and product.get('country_of_origin') != 'Unknown':
