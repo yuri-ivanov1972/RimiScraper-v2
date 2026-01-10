@@ -1,0 +1,167 @@
+In Latvia, food safety is governed by European Food Safety Authority (EFSA) regulations, which are generally stricter than US (FDA) standards. However, "Ultra-Processed Foods" (UPF) are defined not just by safety, but by their industrial nature.
+
+To adapt this for a Latvian consumer, we must use E-numbers (the EU coding system) and account for the fact that some additives (like Titanium Dioxide or BVO) are already banned in the EU.
+
+Here is the list of the 100 most suspicious additives found in Latvian supermarkets, categorized by the NOVA classification system (Group 4: Ultra-processed).
+
+I. Industrial Sugars & Sweeteners (Modified Carbohydrates)
+
+In the EU, these are often hidden under names like "sīrups" (syrup).
+
+Glikozes-fruktozes sīrups (Glucose-fructose syrup – the EU version of HFCS)
+
+Invertsukurs (Invert sugar)
+
+Maltodekstrīns (Maltodextrin)
+
+Dekstroze (Dextrose)
+
+E951 Aspartāms (Aspartame)
+
+E950 Acesulfāms K (Acesulfame K)
+
+E955 Sukraloze (Sucralose)
+
+E954 Saharīns (Saccharin)
+
+E962 Aspartāma-acesulfāma sāls
+
+E965 Maltīts / Maltīta sīrups (Maltitol - common in "sugar-free" snacks)
+
+E420 Sorbīts (Sorbitol)
+
+E967 Ksilīts (Xylitol)
+
+E953 Izomalts (Isomalt)
+
+E968 Eritritols (Erythritol)
+
+Modificētā ciete (Modified starch - E1404 to E1452)
+
+Augstas fruktozes kukurūzas sīrups
+
+Polidekstroze (Bulking agent)
+
+Fruktooligosaharīdi (When used as a filler)
+
+Mākslīgais medus (Invert sugar based)
+
+Agaves sīrups (When highly industrially processed)
+
+II. Industrial Fats & Emulsifiers
+
+These are markers of "technological" food that shouldn't exist in a home kitchen.
+21. Hidrogenēti augu tauki (Hydrogenated vegetable fats)
+22. Daļēji hidrogenēti tauki (Partially hydrogenated - being phased out in EU but still exists in traces)
+23. E471 Taukskābju mono- un diglicerīdi (The most common UPF emulsifier)
+24. E322 Sojas lecitīns (Industrial soy lecithin)
+25. E433 Polisorbiāts 80 (Linked to gut inflammation)
+26. E432–E436 Polisorbiāti
+27. E466 Karboksimetilceluloze
+28. E407 Karagināns (Carrageenan)
+29. E412 Guāra sveķi (Guar gum)
+30. E415 Ksantāna sveķi (Xanthan gum)
+31. E440 Pektīns (Isolated/industrial form)
+32. E410 Baltās akācijas sveķi (Locust bean gum)
+33. E414 Arābu gumija
+34. E452 Polifosfāti (Used in processed cheese and meats)
+35. E481 Nātrija stearoil-2-laktilāts (Common in packaged bread/bulciņas)
+36. E472e (DATEM - industrial dough conditioner)
+37. E491 Sorbitāna monostearāts
+38. Rīsu ciete (When used as a texturizer in dairy)
+39. Biezinātājs: E460 (Celuloze)
+40. Palmu tauki (Fractionated/Industrial)
+
+III. The "Southampton Six" & Other Dyes
+
+In the EU, these 6 dyes require a warning label: "May have an adverse effect on activity and attention in children."
+41. E102 Tartrazīns (Yellow 5)
+42. E104 Hinolīna dzeltenais
+43. E110 Saulrieta dzeltenais FCF (Yellow 6)
+44. E122 Azorubīns
+45. E124 Košenila sarkanais 4R
+46. E129 Alura sarkanais AC (Red 40)
+47. E131 Patentzilais V
+48. E133 Spilgti zilais FCF
+49. E150c/E150d Amonija karamele (Found in Colas/dark breads)
+50. E120 Karminstābe (Cochineal/Carmine)
+51. E160b Annato (In industrial cheeses)
+52. E172 Dzelzs oksīdi
+53. E153 Augu ogle (When used cosmetically)
+54. E160a Beta-karotīns (Synthetic version)
+55. E161b Luteīns (Synthetic version)
+
+IV. Flavor Enhancers (The "Hyper-palatability" Triggers)
+
+These chemicals trick your brain into overeating.
+56. E621 Mononātrija glutamāts (MSG / MSG)
+57. E627 Disonija guanilāts
+58. E631 Disonija inozināts
+59. Rauga ekstrakts (Yeast extract - hidden MSG)
+60. Hidrolizētas augu olbaltumvielas (Hydrolyzed vegetable protein)
+61. Aromatizētāji (Generic "Flavorings")
+62. Dabīgie aromatizētāji (Often still highly processed)
+63. Dūmu aromatizētājs (Smoke flavoring)
+64. Etilvanilīns (Synthetic vanilla)
+65. E635 Disonija 5'-ribonukleotīdi
+66. Glicirizīns (Licorice extract used as a flavor enhancer)
+67. Sojas mērces pulveris (Highly processed flavor base)
+68. Buljona koncentrāts (Industrial cubes)
+69. Maltols
+70. Etilmaltols
+
+V. Preservatives & Chemical Stabilizers
+
+Crucial for products with 6-24 month shelf lives.
+71. E211 Nātrija benzoāts (Sodium benzoate)
+72. E202 Kālija sorbāts (Potassium sorbate)
+73. E250 Nātrija nitrīts (In almost all Latvian sausages/desas)
+74. E251 Nātrija nitrāts
+75. E252 Kālija nitrāts
+76. E282 Kalcija propionāts (Prevents mold in packaged toast bread)
+77. E220–E228 Sulfīti (In dried fruits and wines)
+78. E310 Propilgallāts
+79. E320 Butilēts hidroksianizols (BHA)
+80. E321 Butilēts hidroksitoluols (BHT)
+81. E385 Kalcija dinātrija EDTA
+82. E210 Benzoskābe
+83. E218 Metil-p-hidroksibenzoāts (Parabens)
+84. E235 Natamicīns (On cheese rinds)
+85. E508 Kālija hlorīds (Used to replace salt but keep flavor high)
+
+VI. Industrial Protein & Fillers
+
+Used to replace real meat or milk to lower costs.
+86. Sojas olbaltumvielu izolāts (Soy protein isolate)
+87. Zirņu olbaltumvielas (In ultra-processed vegan meats)
+88. Kazeīns (Isolated milk protein)
+89. Sūkalu olbaltumvielu koncentrāts
+90. Mehāniski atdalīta gaļa (Mechanically separated meat - common in cheap cīsiņi)
+91. Kviešu lipeklis (Added Gluten as a binder)
+92. Laktoze (Added as a filler)
+93. Olu pulveris (Instead of fresh eggs)
+94. Vājpiena pulveris (In non-dairy items as a filler)
+
+VII. Processing Aids & Others
+
+E903 Karnaubvasks (Glazing for candies)
+
+E904 Šellaka (Glazing for chocolates/candies)
+
+E941 Slāpeklis (Gas used to puff up snack bags)
+
+E500 Nātrija karbonāti (When used as a structural agent)
+
+E450 Difosfāti (Baking powders in industrial cakes)
+
+E551 Silīcija dioksīds (Anti-caking agent in powders)
+
+Latvian-Specific Advice:
+
+Check the "Cīsiņi" and "Desas": In Latvia, look for the "Augstākā labuma" (Highest quality) label. If it doesn't have it, it likely contains E250, E450, and Mechanically Separated Meat.
+
+Bread (Maize): Latvia has excellent rye bread (Rupjmaize). However, "Tostermaize" (toast bread) is almost always UPF, containing E282 and E471.
+
+The "Lāču" or "Local" Rule: If a product contains ingredients that a Latvian grandmother wouldn't recognize (e.g., Sojas lecitīns, Glikozes sīrups), it is ultra-processed.
+
+Titanium Dioxide (E171): You will no longer find this in Latvian food (banned in EU since 2022), whereas it is still common in US sweets. If you see it on an imported product, it is illegal in the EU.

@@ -1,0 +1,178 @@
+The U.S. Department of Health and Human Services (HHS) and the USDA recently released the 2025–2030 Dietary Guidelines for Americans, which for the first time explicitly recommend limiting ultra-processed foods (UPF). These guidelines define UPFs not just by their nutrient profile (high salt, sugar, fat) but by the presence of industrial additives that "mimic the sensory qualities of whole foods" or act as markers of industrial formulation.
+
+According to the NOVA classification system—the gold standard used by researchers and referenced in modern health policy—these are the 100 most suspicious additives categorized by their function. These ingredients generally fail the "kitchen cupboard test" (you wouldn't find them in a home kitchen) and are considered markers of ultra-processing.
+
+I. Markers of Industrial Processing (Substances of no culinary use)
+
+These are food derivatives used as cheap fillers or structural "glue."
+
+High-Fructose Corn Syrup (HFCS)
+
+Invert Sugar
+
+Maltodextrin
+
+Dextrose
+
+Glucose Syrup
+
+Hydrogenated Vegetable Oil
+
+Partially Hydrogenated Oil (Source of trans fats)
+
+Interesterified Oils
+
+Soy Protein Isolate
+
+Whey Protein Isolate
+
+Hydrolyzed Protein (e.g., Hydrolyzed Soy Protein)
+
+Modified Starches (Industrial thickening agents)[1]
+
+Mechanically Separated Meat
+
+Casein (Isolated milk protein)
+
+Lactose (Added as a filler)
+
+Gluten (Added as a texturizer)
+
+Crystalline Fructose
+
+Fruit Juice Concentrates (Used as a "natural" sugar marker)[2]
+
+Bulking Agents (e.g., Polydextrose)
+
+Modified Cellulose
+
+II. Synthetic & Non-Nutritive Sweeteners
+
+The 2025 guidelines specifically warn against these due to impacts on gut health and metabolism.
+21. Aspartame (Equal)[2][3]
+22. Sucralose (Splenda)[1][2][4]
+23. Acesulfame Potassium (Ace-K)
+24. Saccharin (Sweet'N Low)
+25. Neotame
+26. Advantame
+27. Cyclamate (Banned in US, common globally)
+28. Sorbitol (Sugar alcohol)[2]
+29. Mannitol
+30. Xylitol
+31. Erythritol
+32. Isomalt
+33. Maltitol
+34. Hydrogenated Starch Hydrolysates
+35. Tagatose
+36. Allulose (When industrially synthesized)
+37. Monk Fruit Extract (Highly processed versions)
+38. Steviol Glycosides (Rebaudioside A)
+39. Thaumatin
+40. Polyglycitol Syrup
+
+III. Petroleum-Based & Cosmetic Dyes
+
+Targeted for removal from the U.S. food supply (especially in school meals) by late 2026.
+41. Red Dye No. 3 (Erythrosine - Banned in CA, FDA phase-out)
+42. Red Dye No. 40 (Allura Red)
+43. Yellow Dye No. 5 (Tartrazine)
+44. Yellow Dye No. 6 (Sunset Yellow)
+45. Blue Dye No. 1 (Brilliant Blue)
+46. Blue Dye No. 2 (Indigo Carmine)
+47. Green Dye No. 3 (Fast Green)
+48. Citrus Red No. 2 (Used on orange skins)
+49. Titanium Dioxide (E171 - Whitening agent banned in EU)[5]
+50. Caramel Color III & IV (Contains 4-MEI, a potential carcinogen)
+51. Cochineal/Carmine (Insect-derived, industrial processing marker)
+52. Annatto (When used in industrial dairy mimics)
+53. Canthaxanthin
+54. Iron Oxides
+55. Aluminum Lake Dyes (Pigment variants of the above)
+
+IV. Emulsifiers & Texturizers
+
+Emerging research links these to gut lining inflammation (leaky gut).
+56. Polysorbate 80
+57. Polysorbate 60
+58. Carrageenan (E407)[6]
+59. Carboxymethylcellulose (CMC)
+60. Methylcellulose
+61. Mono- and Diglycerides of Fatty Acids (E471)
+62. Soy Lecithin (Industrial byproduct)
+63. Guar Gum
+64. Xanthan Gum
+65. Gellan Gum
+66. Locust Bean Gum
+67. Arabic Gum (Acacia)[6]
+68. Pectin (Isolated version)
+69. Sodium Stearoyl Lactylate
+70. Sorbitan Monostearate
+
+V. Preservatives & Chemical Stabilizers
+
+Used to make food "shelf-stable" for months or years.
+71. Sodium Benzoate (Often found in sodas)[3]
+72. Potassium Sorbate[1][4]
+73. Calcium Propionate (Common in packaged breads)
+74. Sodium Nitrite (In processed meats - linked to cancer)[7]
+75. Sodium Nitrate
+76. Butylated Hydroxyanisole (BHA)
+77. Butylated Hydroxytoluene (BHT)[3][7]
+78. Propyl Gallate
+79. TBHQ (Tert-Butylhydroquinone)
+80. EDTA (Calcium Disodium EDTA)
+81. Sulfur Dioxide
+82. Sodium Bisulfite
+83. Propylparaben (Banned in CA)
+84. Potassium Bromate (Flour treatment banned in EU/UK)
+85. Azodicarbonamide (ADA) (The "yoga mat" chemical)
+
+VI. Flavor Enhancers & Cosmetic Flavors
+
+Designed to make low-quality industrial ingredients "hyper-palatable."
+86. Monosodium Glutamate (MSG)
+87. Disodium Inosinate (E631)[1]
+88. Disodium Guanylate (E627)[1]
+89. Yeast Extract (Contains hidden MSG)
+90. Autolyzed Yeast
+91. "Artificial Flavors" (Vague umbrella term for thousands of chemicals)
+92. "Natural Flavors" (Often indistinguishable from artificial in UPF)
+93. Vanillin (Synthetic vanilla)
+94. Ethyl Vanillin
+95. Smoke Flavoring (Polycyclic aromatic hydrocarbons)
+
+VII. Processing Aids & Functional Agents
+
+Secondary chemicals used for texture, shine, or gas.
+96. Brominated Vegetable Oil (BVO) (Banned by FDA in 2024/2025)
+97. Dimethicone / Polydimethylsiloxane (Anti-foaming agent)
+98. Carnauba Wax (Glazing agent for candies)
+99. Shellac (Confectioner's glaze)
+100. Sodium Phosphates (Used as emulsifying salts in processed cheese)
+
+How to use this list:
+
+If you see more than one of these ingredients on a label, the product is almost certainly NOVA Group 4 (Ultra-Processed).[8] The new dietary guidelines emphasize that the health impact of these foods is likely due to the "cocktail effect" of these additives working together to disrupt gut health and satiety signals.
+
+Sources
+help
+nomoreupf.co.uk
+uhhospitals.org
+ewg.org
+reddit.com
+provisionfda.com
+verywellhealth.com
+chefsforseniors.com
+foodtimes.eu
+Google Search Suggestions
+Display of Search Suggestions is required when using Grounding with Google Search. Learn more
+NOVA classification system ultra-processed food additives list
+harmful food additives list 2025 CSPI WHO
+most suspicious food additives ultra-processed food list 100
+list of 100 most common ultra-processed food additives to avoid
+current USDA HHS dietary guidelines ultra-processed food additives list
+comprehensive list of artificial sweeteners and flavor enhancers in UPF
+food additives banned in Europe but allowed in US list 2025 2026
+common food additives and substances of no culinary use list
+most common emulsifiers thickeners and stabilizers in ultra-processed food list
+list of food additives with cosmetic functions NOVA classification
