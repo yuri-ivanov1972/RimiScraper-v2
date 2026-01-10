@@ -4,7 +4,6 @@ import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from google import genai
-from google.genai import types
 
 GEMINI_MODEL = "gemini-2.5-flash"
 VALID_CATEGORIES = {'natural', 'processed', 'uncategorized'}
@@ -17,11 +16,13 @@ def get_gemini_client():
     if not api_key:
         raise ValueError("AI_INTEGRATIONS_GEMINI_API_KEY not set")
     
-    http_options = None
-    if base_url:
-        http_options = types.HttpOptions(api_endpoint=base_url)
-    
-    client = genai.Client(api_key=api_key, http_options=http_options)
+    client = genai.Client(
+        api_key=api_key,
+        http_options={
+            'api_version': '',
+            'base_url': base_url
+        }
+    )
     return client
 
 
