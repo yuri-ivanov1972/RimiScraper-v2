@@ -578,35 +578,40 @@ def render_product_detail_view():
         st.subheader("📝 Sastāvdaļas")
         st.write(product['ingredients_text'])
     
-    # Canonical Ingredients with Type Indicators
+    # Ingredient Analysis with Categories
     try:
         sku = product.get('sku')
         if sku:
-            canonical_query = """
-                SELECT display_name, ingredient_type, type_description
-                FROM product_ingredients_display
-                WHERE product_sku = %s
-                ORDER BY ingredient_type, display_name
+            ingredient_query = """
+                SELECT 
+                    ia.ingredient,
+                    COALESCE(ia.clean_name, ia.ingredient) as display_name,
+                    COALESCE(ia.category, 'uncategorized') as category,
+                    ia.is_processed
+                FROM ingredient_product_mapping ipm
+                JOIN ingredient_analysis ia ON ipm.ingredient_id = ia.id
+                WHERE ipm.product_sku = %s
+                ORDER BY ia.category, ia.ingredient
             """
             db._ensure_connection()
             with db.connection.cursor() as cur:
-                cur.execute(canonical_query, (sku,))
-                canonical_ingredients = cur.fetchall()
+                cur.execute(ingredient_query, (sku,))
+                ingredients = cur.fetchall()
             
-            if canonical_ingredients:
+            if ingredients:
                 st.subheader("🧪 Ingredientu analīze")
                 
                 natural_list = []
                 processed_list = []
                 uncategorized_list = []
                 
-                for ing in canonical_ingredients:
-                    name = ing['display_name'] if ing.get('display_name') else "Unknown"
-                    ing_type = ing['ingredient_type'] if ing.get('ingredient_type') else "uncategorized"
+                for ing in ingredients:
+                    name = ing['display_name'] if ing.get('display_name') else ing['ingredient']
+                    category = ing['category'] if ing.get('category') else 'uncategorized'
                     
-                    if ing_type == 'natural':
+                    if category == 'natural':
                         natural_list.append(f"🌿 {name}")
-                    elif ing_type == 'processed':
+                    elif category == 'processed':
                         processed_list.append(f"🏭 {name}")
                     else:
                         uncategorized_list.append(f"❓ {name}")
@@ -1293,98 +1298,131 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
 
 
 def section_ingredient_import():
-    """Section: Ingredient Canonicalization Import"""
-    from ingredient_canonical_import import IngredientCanonicalImporter
+    """Section: AI-Powered Ingredient Categorization"""
+    from ingredient_ai_categorizer import get_categorization_stats, backfill_uncategorized_ingredients
     
-    st.header("🧪 Ingredient Canonicalization")
+    st.header("🧪 AI Ingredient Categorization")
     
-    importer = IngredientCanonicalImporter()
+    stats = get_categorization_stats()
     
-    stats = importer.get_import_stats()
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Total Canonical", stats['total_canonical'])
-    with col2:
-        natural_count = stats['type_counts'].get('natural', 0)
-        st.metric("Natural", natural_count)
-    with col3:
-        processed_count = stats['type_counts'].get('processed', 0)
-        st.metric("Processed", processed_count)
-    with col4:
-        st.metric("Coverage", f"{stats['coverage_percent']}%")
-    
-    st.caption(f"Mapped: {stats['total_mappings']} / {stats['total_ingredients']} ingredients | Unmapped: {stats['unmapped_count']}")
+    if stats:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Ingredients", stats['total'])
+        with col2:
+            st.metric("Natural", stats['natural'])
+        with col3:
+            st.metric("Processed", stats['processed'])
+        with col4:
+            uncategorized_pct = round((stats['uncategorized'] / stats['total']) * 100, 1) if stats['total'] > 0 else 0
+            st.metric("Uncategorized", f"{stats['uncategorized']} ({uncategorized_pct}%)")
+        
+        categorized = stats['natural'] + stats['processed']
+        coverage = round((categorized / stats['total']) * 100, 1) if stats['total'] > 0 else 0
+        st.progress(coverage / 100, f"Coverage: {coverage}% ({categorized}/{stats['total']})")
+    else:
+        st.error("Could not load ingredient statistics")
+        return
     
     st.divider()
     
-    st.subheader("Import CSV File")
+    st.subheader("AI Backfill")
     st.markdown("""
-    **CSV Format:** `id|ingredient|category|type`
-    - **id**: Synonym IDs separated by `!` (first becomes canonical)
-    - **ingredient**: Canonical name
-    - **category**: `A` (natural) or `B` (processed)  
-    - **type**: Latvian description
+    Use Google AI (Gemini) to automatically categorize uncategorized ingredients.
+    - **Natural**: Whole foods, unprocessed (fruits, vegetables, meat, herbs, etc.)
+    - **Processed**: Industrial/refined (E-numbers, preservatives, modified starches, etc.)
     """)
     
-    uploaded_file = st.file_uploader("Upload CSV file", type=['csv', 'txt'])
+    if 'backfill_running' not in st.session_state:
+        st.session_state.backfill_running = False
+    if 'backfill_progress' not in st.session_state:
+        st.session_state.backfill_progress = 0
+    if 'backfill_results' not in st.session_state:
+        st.session_state.backfill_results = None
     
-    skip_existing = st.checkbox("Skip existing entries (recommended)", value=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        batch_size = st.number_input("Batch size (ingredients per AI call)", min_value=10, max_value=100, value=50)
+    with col2:
+        limit = st.number_input("Max ingredients to process (0 = all)", min_value=0, max_value=10000, value=0)
     
-    if uploaded_file is not None:
-        content = uploaded_file.read().decode('utf-8')
-        records = importer.parse_csv_content(content)
+    estimated_calls = (stats['uncategorized'] // batch_size) + 1 if stats['uncategorized'] > 0 else 0
+    st.caption(f"Estimated API calls: ~{estimated_calls} (at {batch_size} ingredients/call)")
+    
+    if stats['uncategorized'] == 0:
+        st.success("All ingredients are categorized!")
+    elif st.button("Start AI Categorization", type="primary", disabled=st.session_state.backfill_running):
+        st.session_state.backfill_running = True
+        st.session_state.backfill_progress = 0
         
-        if records:
-            st.success(f"Parsed {len(records)} ingredient groups from file")
+        progress_bar = st.progress(0, "Starting...")
+        status_text = st.empty()
+        results_container = st.container()
+        
+        def progress_callback(processed, total, current_batch):
+            pct = processed / total if total > 0 else 0
+            progress_bar.progress(pct, f"Processing: {processed}/{total}")
             
-            with st.expander("Preview parsed records", expanded=False):
-                for i, rec in enumerate(records[:10]):
-                    type_emoji = "🌿" if rec['type'] == 'natural' else "🏭"
-                    st.markdown(f"{type_emoji} **{rec['name']}** ({rec['type']}) - IDs: {rec['synonym_ids'][:3]}{'...' if len(rec['synonym_ids']) > 3 else ''}")
-                if len(records) > 10:
-                    st.caption(f"... and {len(records) - 10} more")
+            if current_batch:
+                natural_in_batch = sum(1 for r in current_batch if r['category'] == 'natural')
+                processed_in_batch = sum(1 for r in current_batch if r['category'] == 'processed')
+                status_text.caption(f"Last batch: {natural_in_batch} natural, {processed_in_batch} processed")
+        
+        try:
+            limit_value = limit if limit > 0 else None
+            results = backfill_uncategorized_ingredients(
+                batch_size=batch_size,
+                limit=limit_value,
+                progress_callback=progress_callback
+            )
             
-            if st.button("Import Records", type="primary"):
-                with st.spinner("Importing..."):
-                    result = importer.import_records(records, skip_existing=skip_existing)
-                
-                if result['imported_canonical'] > 0 or result['imported_mappings'] > 0:
-                    st.success(f"Imported {result['imported_canonical']} canonical entries and {result['imported_mappings']} mappings")
-                
-                if result['skipped_canonical'] > 0:
-                    st.info(f"Skipped {result['skipped_canonical']} existing canonical entries")
-                
-                if result['invalid_ids']:
-                    st.warning(f"Invalid IDs (not in ingredient_analysis): {result['invalid_ids'][:10]}")
-                
-                if result['errors']:
-                    for err in result['errors'][:5]:
-                        st.error(err)
-                
-                with st.spinner("Refreshing materialized view..."):
-                    if importer.refresh_materialized_view():
-                        st.success("Materialized view refreshed")
-                    else:
-                        st.warning("Could not refresh materialized view")
-                
-                st.rerun()
-        else:
-            st.error("Could not parse any records from the file")
+            st.session_state.backfill_results = results
+            st.session_state.backfill_running = False
+            
+            with results_container:
+                st.success(f"Categorization complete!")
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Processed", results['processed'])
+                with col2:
+                    st.metric("Natural", results['natural'])
+                with col3:
+                    st.metric("Processed", results['processed_count'])
+                with col4:
+                    st.metric("Failed", results['failed'])
+            
+            st.rerun()
+            
+        except Exception as e:
+            st.session_state.backfill_running = False
+            st.error(f"Error during categorization: {str(e)}")
+    
+    if st.session_state.backfill_results and not st.session_state.backfill_running:
+        results = st.session_state.backfill_results
+        st.info(f"Last run: {results['processed']} processed, {results['natural']} natural, {results['processed_count']} processed, {results['failed']} failed")
     
     st.divider()
     
-    st.subheader("Unmapped Ingredients")
-    st.caption("Top unmapped ingredients by frequency (need categorization)")
+    st.subheader("Recent Categorizations")
     
-    unmapped = importer.get_unmapped_ingredients(limit=50)
+    db = get_db()
+    db._ensure_connection()
     
-    if unmapped:
-        unmapped_text = "\n".join([f"{u['id']}|{u['ingredient']}||" for u in unmapped[:50]])
-        st.text_area("Copy for Google AI Studio (id|ingredient|category|type)", unmapped_text, height=300)
-        st.caption(f"Showing top 50 of {stats['unmapped_count']} unmapped ingredients")
-    else:
-        st.success("All ingredients are mapped!")
+    with db.connection.cursor() as cur:
+        cur.execute("""
+            SELECT id, ingredient, clean_name, category, is_processed, frequency
+            FROM ingredient_analysis
+            WHERE category != 'uncategorized' AND category IS NOT NULL
+            ORDER BY id DESC
+            LIMIT 20
+        """)
+        recent = cur.fetchall()
+    
+    if recent:
+        for ing in recent:
+            emoji = "🌿" if ing['category'] == 'natural' else "🏭" if ing['category'] == 'processed' else "❓"
+            clean = ing['clean_name'] if ing['clean_name'] else ing['ingredient']
+            st.markdown(f"{emoji} **{clean}** ← _{ing['ingredient']}_ (freq: {ing['frequency']})")
 
 
 def main():

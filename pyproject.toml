@@ -5,6 +5,7 @@ description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
     "beautifulsoup4>=4.12.3",
+    "google-genai>=1.57.0",
     "openai>=1.59.5",
     "pandas>=2.2.3",
     "psycopg2-binary>=2.9.10",

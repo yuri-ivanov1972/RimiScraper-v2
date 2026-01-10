@@ -89,12 +89,15 @@ CREATE TABLE productphotos (
 -- INGREDIENT ANALYSIS TABLES
 -- ============================================================================
 
--- Unique ingredients catalog with frequency tracking
+-- Unique ingredients catalog with frequency tracking and AI categorization
 CREATE TABLE ingredient_analysis (
     id SERIAL PRIMARY KEY,
     ingredient TEXT NOT NULL UNIQUE,         -- Normalized ingredient name (lowercase)
     frequency INTEGER NOT NULL DEFAULT 1,    -- How many products contain this
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    clean_name TEXT,                         -- Cleaned name (no parentheses, asterisks, etc.)
+    category VARCHAR(20) DEFAULT 'uncategorized',  -- 'natural', 'processed', 'uncategorized'
+    is_processed BOOLEAN                     -- TRUE=processed, FALSE=natural, NULL=uncategorized
 );
 
 -- Many-to-many: products <-> ingredients

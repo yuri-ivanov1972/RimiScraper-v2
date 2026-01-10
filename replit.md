@@ -117,21 +117,23 @@ The application features a modular Python architecture comprising:
       - **Root cause**: Autoscale designed for bursty request/response workloads, incompatible with long-running scraping
       - **Solution**: Migrate to Reserved VM for 24/7 uninterrupted processing (see below)
       
-    - **Ingredient Canonicalization System** (added January 2026):
-      - **Purpose**: Clean up and categorize 7,262 unique ingredients with synonym grouping
-      - **Architecture**: Mapping layer on top of existing `ingredient_analysis` table (unchanged)
-      - **Database Tables**:
-        - `ingredient_canonical`: Stores canonical ingredients with `type` (natural/processed/uncategorized) and Latvian description
-        - `ingredient_mapping`: Maps `ingredient_analysis.id` → `canonical_id` (first ID in synonym group becomes canonical)
-        - `product_ingredients_display`: Materialized view for fast product card queries
-      - **Import Process**:
-        - CSV format: `id|ingredient|category|type` where id contains synonym IDs separated by `!`
-        - Category A → natural, Category B → processed
-        - Supports duplicate handling (skip existing option)
-        - UI in Streamlit "Ingredients" tab
-      - **Auto-categorization**: New ingredients during scraping automatically get uncategorized canonical entries
-      - **Display**: Product Browser shows ingredients with type indicators (natural/processed/uncategorized)
-      - **Refresh**: Call `refresh_product_ingredients_display()` after imports
+    - **AI-Powered Ingredient Categorization System** (updated January 2026):
+      - **Purpose**: Automatically categorize 7,262 unique ingredients using Google AI (Gemini)
+      - **Architecture**: Direct columns on `ingredient_analysis` table (simplified from previous mapping layer)
+      - **Database Schema** (ingredient_analysis table):
+        - `ingredient`: Original normalized ingredient name
+        - `clean_name`: AI-cleaned ingredient name (removes parentheses, asterisks, percentages)
+        - `category`: 'natural', 'processed', or 'uncategorized'
+        - `is_processed`: Boolean flag (TRUE=processed, FALSE=natural, NULL=uncategorized)
+        - `frequency`: How many products contain this ingredient
+      - **Two AI Modes**:
+        - **Batch mode (Option A)**: For backfilling existing ingredients (50 per API call, ~$0.005-0.02 per batch)
+        - **Single mode (Option B)**: For new ingredients during scraping (real-time categorization)
+      - **Backfill UI**: Streamlit "Ingredients" tab with progress tracking and statistics
+      - **Auto-categorization**: New ingredients during scraping get AI-categorized automatically
+      - **Display**: Product Browser shows ingredients with type indicators (🌿 natural / 🏭 processed / ❓ uncategorized)
+      - **Synonym handling**: AI identifies similar ingredients and assigns same clean_name for grouping
+      - **Key files**: `ingredient_ai_categorizer.py`, `ingredient_processor.py`
 
 ## External Dependencies
 - **Streamlit**: Web application framework.
@@ -141,4 +143,4 @@ The application features a modular Python architecture comprising:
 - **pandas**: Data manipulation.
 - **trafilatura**: Text extraction from web pages.
 - **urllib3**: HTTP client with retry support.
-- **openai**: (Future enhancement) AI integration.
+- **google-genai**: Google AI (Gemini) integration for ingredient categorization.

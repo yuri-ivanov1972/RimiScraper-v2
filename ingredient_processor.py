@@ -385,7 +385,7 @@ class IngredientProcessor:
                     insert_result = self._execute_query(insert_query, (normalized_name,), fetch=True)
                     if insert_result and len(insert_result) > 0:
                         new_id = insert_result[0]['id']
-                        self._auto_create_uncategorized_canonical(new_id, normalized_name)
+                        self._auto_categorize_new_ingredient(new_id, normalized_name)
                         return new_id
                 
                 except Exception as insert_error:
@@ -409,31 +409,36 @@ class IngredientProcessor:
         
         return None
     
-    def _auto_create_uncategorized_canonical(self, ingredient_id: int, ingredient_name: str):
-        """Auto-create uncategorized canonical entry for new ingredients not yet mapped"""
+    def _auto_categorize_new_ingredient(self, ingredient_id: int, ingredient_name: str):
+        """Auto-categorize new ingredient using AI (Option B: single ingredient)"""
         try:
-            check_query = "SELECT 1 FROM ingredient_mapping WHERE ingredient_id = %s"
-            result = self._execute_query(check_query, (ingredient_id,), fetch=True)
+            from ingredient_ai_categorizer import categorize_single_ingredient
             
-            if result and len(result) > 0:
-                return
+            result = categorize_single_ingredient(ingredient_name)
             
-            canonical_insert = """
-                INSERT INTO ingredient_canonical (canonical_id, name, type, description)
-                VALUES (%s, %s, 'uncategorized', 'Auto-created - needs categorization')
-                ON CONFLICT (canonical_id) DO NOTHING
+            clean_name = result.get('clean_name') or ingredient_name
+            category = result.get('category') or 'uncategorized'
+            is_processed = result.get('is_processed')
+            
+            if category not in ('natural', 'processed', 'uncategorized'):
+                category = 'uncategorized'
+                is_processed = None
+            
+            update_query = """
+                UPDATE ingredient_analysis 
+                SET clean_name = %s, category = %s, is_processed = %s
+                WHERE id = %s
             """
-            self._execute_query(canonical_insert, (ingredient_id, ingredient_name))
-            
-            mapping_insert = """
-                INSERT INTO ingredient_mapping (ingredient_id, canonical_id)
-                VALUES (%s, %s)
-                ON CONFLICT (ingredient_id) DO NOTHING
-            """
-            self._execute_query(mapping_insert, (ingredient_id, ingredient_id))
+            self._execute_query(update_query, (
+                clean_name,
+                category,
+                is_processed,
+                ingredient_id
+            ))
+            self.status_callback(f"AI categorized: {ingredient_name} -> {category}")
             
         except Exception as e:
-            self.status_callback(f"Warning: Could not auto-create canonical for {ingredient_name}: {str(e)}")
+            self.status_callback(f"Warning: Could not AI-categorize {ingredient_name}: {str(e)}")
 
     def _create_ingredient_mapping(self, ingredient_id: int, sku: str):
         """Create product-ingredient mapping"""
