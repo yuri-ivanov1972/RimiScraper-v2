@@ -1405,7 +1405,7 @@ def section_ingredient_import():
     
     st.subheader("Recent Categorizations")
     
-    db = get_db()
+    db = ProductViewDatabase()
     db._ensure_connection()
     
     with db.connection.cursor() as cur:
@@ -1423,6 +1423,8 @@ def section_ingredient_import():
             emoji = "🌿" if ing['category'] == 'natural' else "🏭" if ing['category'] == 'processed' else "❓"
             clean = ing['clean_name'] if ing['clean_name'] else ing['ingredient']
             st.markdown(f"{emoji} **{clean}** ← _{ing['ingredient']}_ (freq: {ing['frequency']})")
+    else:
+        st.info("No categorized ingredients yet. Run the AI backfill above to start.")
 
 
 def main():
