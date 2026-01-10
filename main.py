@@ -1425,6 +1425,167 @@ def section_ingredient_import():
             st.markdown(f"{emoji} **{clean}** ← _{ing['ingredient']}_ (freq: {ing['frequency']})")
     else:
         st.info("No categorized ingredients yet. Run the AI backfill above to start.")
+    
+    st.divider()
+    section_suspicion_analysis()
+
+
+def section_suspicion_analysis():
+    """Section: NOVA4 Suspicion Analysis for processed ingredients"""
+    from suspicion_analyzer import get_suspicion_stats, run_suspicion_analysis, reset_suspicion_analysis
+    
+    st.header("⚠️ NOVA4 Suspicion Analysis")
+    st.markdown("""
+    Analyze **processed ingredients** to identify NOVA4 ultra-processed food markers.
+    Based on EU/Latvia food safety guidelines and EFSA regulations.
+    """)
+    
+    suspicion_stats = get_suspicion_stats()
+    
+    if suspicion_stats:
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.metric("Total Processed", suspicion_stats['total_processed'])
+        with col2:
+            st.metric("🔴 Avoid", suspicion_stats['avoid_count'])
+        with col3:
+            st.metric("🟠 Limit", suspicion_stats['limit_count'])
+        with col4:
+            st.metric("🟡 Caution", suspicion_stats['caution_count'])
+        with col5:
+            analyzed_pct = round((suspicion_stats['analyzed'] / suspicion_stats['total_processed']) * 100, 1) if suspicion_stats['total_processed'] > 0 else 0
+            st.metric("Analyzed", f"{suspicion_stats['analyzed']} ({analyzed_pct}%)")
+        
+        if suspicion_stats['total_processed'] > 0:
+            progress_val = suspicion_stats['analyzed'] / suspicion_stats['total_processed']
+            st.progress(progress_val, f"Analysis Progress: {suspicion_stats['analyzed']}/{suspicion_stats['total_processed']}")
+    else:
+        st.error("Could not load suspicion statistics")
+        return
+    
+    st.divider()
+    
+    st.subheader("Run Suspicion Analysis")
+    st.markdown("""
+    Uses AI to match processed ingredients against the NOVA4 suspicious additives list:
+    - **🔴 Avoid**: Strong evidence of harm (Southampton Six dyes, nitrites, trans fats)
+    - **🟠 Limit**: Regular consumption may have negative effects (MSG, sweeteners)
+    - **🟡 Caution**: Industrial marker, minimal direct harm (emulsifiers, fillers)
+    """)
+    
+    if 'suspicion_running' not in st.session_state:
+        st.session_state.suspicion_running = False
+    if 'suspicion_results' not in st.session_state:
+        st.session_state.suspicion_results = None
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        susp_batch_size = st.number_input("Batch size", min_value=10, max_value=100, value=50, key="susp_batch")
+    with col2:
+        susp_limit = st.number_input("Max to process (0 = all)", min_value=0, max_value=10000, value=0, key="susp_limit")
+    
+    unanalyzed = suspicion_stats['unanalyzed'] if suspicion_stats else 0
+    estimated_calls = (unanalyzed // susp_batch_size) + 1 if unanalyzed > 0 else 0
+    st.caption(f"Unanalyzed: {unanalyzed} | Estimated API calls: ~{estimated_calls}")
+    
+    col_btn1, col_btn2 = st.columns(2)
+    
+    with col_btn1:
+        if unanalyzed == 0:
+            st.success("All processed ingredients analyzed!")
+        elif st.button("Start Suspicion Analysis", type="primary", disabled=st.session_state.suspicion_running):
+            st.session_state.suspicion_running = True
+            
+            progress_bar = st.progress(0, "Starting analysis...")
+            status_text = st.empty()
+            results_container = st.container()
+            
+            def susp_progress_callback(processed, total, current_batch):
+                pct = processed / total if total > 0 else 0
+                progress_bar.progress(pct, f"Analyzing: {processed}/{total}")
+                
+                if current_batch:
+                    avoid_in_batch = sum(1 for r in current_batch if r.get('suspicion_level') == 'avoid')
+                    limit_in_batch = sum(1 for r in current_batch if r.get('suspicion_level') == 'limit')
+                    caution_in_batch = sum(1 for r in current_batch if r.get('suspicion_level') == 'caution')
+                    status_text.caption(f"Last batch: {avoid_in_batch} avoid, {limit_in_batch} limit, {caution_in_batch} caution")
+            
+            try:
+                limit_value = susp_limit if susp_limit > 0 else None
+                results = run_suspicion_analysis(
+                    batch_size=susp_batch_size,
+                    limit=limit_value,
+                    progress_callback=susp_progress_callback
+                )
+                
+                st.session_state.suspicion_results = results
+                st.session_state.suspicion_running = False
+                
+                with results_container:
+                    st.success("Analysis complete!")
+                    col1, col2, col3, col4, col5 = st.columns(5)
+                    with col1:
+                        st.metric("Processed", results['processed'])
+                    with col2:
+                        st.metric("🔴 Avoid", results['avoid'])
+                    with col3:
+                        st.metric("🟠 Limit", results['limit_count'])
+                    with col4:
+                        st.metric("🟡 Caution", results['caution'])
+                    with col5:
+                        st.metric("Clean", results['clean'])
+                
+                st.rerun()
+                
+            except Exception as e:
+                st.session_state.suspicion_running = False
+                st.error(f"Error during analysis: {str(e)}")
+    
+    with col_btn2:
+        if st.button("🔄 Reset Analysis", type="secondary"):
+            reset_suspicion_analysis()
+            st.success("Suspicion data reset. You can re-run the analysis.")
+            st.rerun()
+    
+    if st.session_state.suspicion_results and not st.session_state.suspicion_running:
+        results = st.session_state.suspicion_results
+        st.info(f"Last run: {results['processed']} analyzed | 🔴 {results['avoid']} avoid | 🟠 {results['limit_count']} limit | 🟡 {results['caution']} caution | ✅ {results['clean']} clean")
+    
+    st.divider()
+    
+    st.subheader("Suspicious Ingredients Found")
+    
+    db = ProductViewDatabase()
+    db._ensure_connection()
+    
+    with db.connection.cursor() as cur:
+        cur.execute("""
+            SELECT id, ingredient, clean_name, suspicion_level, suspicion_category, health_note, frequency
+            FROM ingredient_analysis
+            WHERE suspicion_level IS NOT NULL
+            ORDER BY 
+                CASE suspicion_level 
+                    WHEN 'avoid' THEN 1 
+                    WHEN 'limit' THEN 2 
+                    WHEN 'caution' THEN 3 
+                END,
+                frequency DESC
+            LIMIT 30
+        """)
+        suspicious = cur.fetchall()
+    
+    if suspicious:
+        for ing in suspicious:
+            level = ing['suspicion_level']
+            emoji = "🔴" if level == 'avoid' else "🟠" if level == 'limit' else "🟡"
+            clean = ing['clean_name'] if ing['clean_name'] else ing['ingredient']
+            cat = ing['suspicion_category'] or "unknown"
+            note = ing['health_note'] or ""
+            
+            level_upper = level.upper() if level else "?"
+            st.markdown(f"{emoji} **{level_upper}** | **{clean}** ({cat}) - {note} _(freq: {ing['frequency']})_")
+    else:
+        st.info("No suspicious ingredients found yet. Run the analysis above to start.")
 
 
 def main():
