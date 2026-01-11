@@ -471,6 +471,10 @@ class ProcessingWorker:
                         if job:
                             self.process_job(job)
                 
+                # Refresh materialized view after processing categories
+                if self.running:
+                    self.refresh_product_ingredient_cards()
+                
             elif mode == 'resume-all':
                 # Process all incomplete jobs
                 while self.running:
@@ -481,6 +485,7 @@ class ProcessingWorker:
                         self.process_job(job)
                     else:
                         self.logger.info("No more jobs in queue, exiting")
+                        self.refresh_product_ingredient_cards()
                         break
                     
             else:  # continuous
@@ -499,6 +504,28 @@ class ProcessingWorker:
         
         finally:
             self.shutdown()
+    
+    def refresh_product_ingredient_cards(self):
+        """Refresh the materialized view for product card data sharing"""
+        conn = None
+        try:
+            self.logger.info("Refreshing product_ingredient_cards materialized view...")
+            start_time = time.time()
+            
+            conn = self._get_db_connection()
+            conn.autocommit = True
+            cur = conn.cursor()
+            
+            cur.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY product_ingredient_cards")
+            
+            elapsed = time.time() - start_time
+            self.logger.info(f"Materialized view refreshed in {elapsed:.1f}s")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to refresh materialized view: {e}")
+        finally:
+            if conn:
+                conn.close()
     
     def shutdown(self):
         """Shutdown worker gracefully"""
