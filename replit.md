@@ -139,6 +139,34 @@ The application features a modular Python architecture comprising:
       - **Key file**: `combined_ingredient_analyzer.py`
       - **Legacy files** (still available for rollback): `ingredient_ai_categorizer.py`, `suspicion_analyzer.py`
 
+## Data Sharing for External Projects
+
+For displaying ingredient data on product cards in other projects, use the `product_ingredient_cards` materialized view:
+
+```sql
+SELECT sku, name, ingredients, natural_count, processed_count, avoid_count
+FROM product_ingredient_cards
+WHERE sku = 'YOUR_SKU';
+```
+
+**Returned Fields:**
+- `sku`, `name`, `category_id`, `category_name`: Product identification
+- `ingredients`: JSONB array (always present, empty `[]` if no ingredients) with each ingredient containing:
+  - `id`: Stable foreign key to `ingredient_analysis.id`
+  - `name`: Cleaned ingredient name
+  - `category`: 'natural', 'processed', or 'uncategorized'
+  - `is_processed`: Boolean (true/false/null)
+  - `suspicion_level`: 'avoid'/'limit'/'caution'/'clean'/null
+  - `suspicion_category`: Type of concern (sweetener, preservative, etc.)
+  - `health_note`: Latvian health warning (max 200 chars)
+- `natural_count`, `processed_count`: Summary counts per product
+- `avoid_count`, `limit_count`, `caution_count`: Risk indicator counts
+
+**Refresh after daily updates:**
+```sql
+REFRESH MATERIALIZED VIEW CONCURRENTLY product_ingredient_cards;
+```
+
 ## External Dependencies
 - **Streamlit**: Web application framework.
 - **BeautifulSoup4**: HTML parsing.

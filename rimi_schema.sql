@@ -89,7 +89,7 @@ CREATE TABLE productphotos (
 -- INGREDIENT ANALYSIS TABLES
 -- ============================================================================
 
--- Unique ingredients catalog with frequency tracking and AI categorization
+-- Unique ingredients catalog with frequency tracking, AI categorization, and NOVA4 suspicion analysis
 CREATE TABLE ingredient_analysis (
     id SERIAL PRIMARY KEY,
     ingredient TEXT NOT NULL UNIQUE,         -- Normalized ingredient name (lowercase)
@@ -97,7 +97,12 @@ CREATE TABLE ingredient_analysis (
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     clean_name TEXT,                         -- Cleaned name (no parentheses, asterisks, etc.)
     category VARCHAR(20) DEFAULT 'uncategorized',  -- 'natural', 'processed', 'uncategorized'
-    is_processed BOOLEAN                     -- TRUE=processed, FALSE=natural, NULL=uncategorized
+    is_processed BOOLEAN,                    -- TRUE=processed, FALSE=natural, NULL=uncategorized
+    -- NOVA4 suspicion analysis fields (added January 2026)
+    suspicion_level TEXT,                    -- 'avoid', 'limit', 'caution', 'clean', NULL (NULL for natural)
+    suspicion_category TEXT,                 -- 'sweetener', 'emulsifier', 'dye', 'flavor_enhancer', 
+                                            -- 'preservative', 'filler', 'processing_aid', 'industrial_fat'
+    health_note TEXT                         -- Brief health concern in Latvian (max 200 chars)
 );
 
 -- Many-to-many: products <-> ingredients
@@ -240,7 +245,11 @@ CREATE INDEX idx_photos_product_id ON productphotos(product_id);
 
 -- Ingredient indexes
 CREATE INDEX idx_ingredient_analysis_freq ON ingredient_analysis(frequency DESC);
+CREATE INDEX idx_ingredient_analysis_category ON ingredient_analysis(category);
+CREATE INDEX idx_ingredient_analysis_suspicion ON ingredient_analysis(suspicion_level);
+CREATE INDEX idx_ingredient_analysis_processed ON ingredient_analysis(is_processed);
 CREATE INDEX idx_ingredient_product_mapping_ingredient ON ingredient_product_mapping(ingredient_id);
+CREATE INDEX idx_ingredient_product_mapping_sku ON ingredient_product_mapping(product_sku);
 
 -- Job queue indexes (critical for worker polling)
 CREATE INDEX idx_category_jobs_status ON category_processing_jobs(status);
@@ -273,6 +282,46 @@ CREATE INDEX idx_update_statistics_job_id ON update_statistics(job_id);
 CREATE INDEX idx_update_statistics_category_code ON update_statistics(category_code);
 
 -- ============================================================================
+-- MATERIALIZED VIEWS FOR DATA SHARING
+-- ============================================================================
+
+-- Product cards view with aggregated ingredient analysis (for external project integration)
+-- Refresh after nightly scraping: REFRESH MATERIALIZED VIEW CONCURRENTLY product_ingredient_cards;
+CREATE MATERIALIZED VIEW product_ingredient_cards AS
+SELECT 
+    p.sku,
+    p.name,
+    p.category_id,
+    nc.name_lv AS category_name,
+    COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', ia.id,
+                'name', COALESCE(ia.clean_name, ia.ingredient),
+                'category', ia.category,
+                'is_processed', ia.is_processed,
+                'suspicion_level', ia.suspicion_level,
+                'suspicion_category', ia.suspicion_category,
+                'health_note', ia.health_note
+            ) ORDER BY ia.frequency DESC
+        ) FILTER (WHERE ia.id IS NOT NULL),
+        '[]'::jsonb
+    ) AS ingredients,
+    COUNT(ia.id) FILTER (WHERE ia.category = 'natural') AS natural_count,
+    COUNT(ia.id) FILTER (WHERE ia.category = 'processed') AS processed_count,
+    COUNT(ia.id) FILTER (WHERE ia.suspicion_level = 'avoid') AS avoid_count,
+    COUNT(ia.id) FILTER (WHERE ia.suspicion_level = 'limit') AS limit_count,
+    COUNT(ia.id) FILTER (WHERE ia.suspicion_level = 'caution') AS caution_count
+FROM products p
+LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+LEFT JOIN ingredient_product_mapping ipm ON p.sku = ipm.product_sku
+LEFT JOIN ingredient_analysis ia ON ipm.ingredient_id = ia.id
+GROUP BY p.sku, p.name, p.category_id, nc.name_lv;
+
+-- Index for fast lookups by SKU
+CREATE UNIQUE INDEX idx_product_ingredient_cards_sku ON product_ingredient_cards(sku);
+
+-- ============================================================================
 -- USAGE NOTES FOR BARBORA ADAPTATION
 -- ============================================================================
 -- 1. Rename 'rimi_url' to 'barbora_url' in products table
@@ -280,3 +329,24 @@ CREATE INDEX idx_update_statistics_category_code ON update_statistics(category_c
 -- 3. Update data_source values: 'rimi_scraper' -> 'barbora_scraper'
 -- 4. MansRimi discount prices -> PALDIES discount prices (same column structure)
 -- 5. Keep all other structure identical for shared reporting across stores
+
+-- ============================================================================
+-- DATA SHARING CONTRACT FOR EXTERNAL PROJECTS
+-- ============================================================================
+-- Use product_ingredient_cards view for product card display:
+--
+-- SELECT sku, name, ingredients, natural_count, processed_count, avoid_count
+-- FROM product_ingredient_cards
+-- WHERE sku = 'YOUR_SKU';
+--
+-- Each ingredient in the 'ingredients' JSONB array contains:
+--   - id: ingredient_analysis.id (stable foreign key)
+--   - name: cleaned ingredient name
+--   - category: 'natural', 'processed', or 'uncategorized'
+--   - is_processed: true/false/null
+--   - suspicion_level: 'avoid'/'limit'/'caution'/'clean'/null
+--   - suspicion_category: type of concern (sweetener, preservative, etc.)
+--   - health_note: Latvian health warning (max 200 chars)
+--
+-- Refresh materialized view after daily updates:
+-- REFRESH MATERIALIZED VIEW CONCURRENTLY product_ingredient_cards;
