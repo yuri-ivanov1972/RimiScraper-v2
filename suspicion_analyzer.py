@@ -157,7 +157,9 @@ def validate_suspicion_result(result: dict, ingredient_id: int) -> dict:
     if level:
         level = str(level).lower().strip()
         if level not in {'avoid', 'limit', 'caution'}:
-            level = None
+            level = 'clean'
+    else:
+        level = 'clean'
     
     category = result.get('suspicion_category')
     if category:
@@ -197,7 +199,7 @@ def analyze_suspicion_batch(ingredients: list[dict], batch_size: int = 50) -> li
         client = get_gemini_client()
     except Exception as e:
         print(f"Gemini unavailable: {e}")
-        return [{"id": ing["id"], "suspicion_level": None, 
+        return [{"id": ing["id"], "suspicion_level": "clean", 
                  "suspicion_category": None, "health_note": None} for ing in ingredients]
     
     results = []
@@ -209,30 +211,51 @@ def analyze_suspicion_batch(ingredients: list[dict], batch_size: int = 50) -> li
             for ing in batch
         ])
         
-        prompt = f"""You are a food safety expert analyzing ingredients for NOVA 4 ultra-processed food markers.
+        prompt = f"""You are a food safety expert. Analyze each ingredient for NOVA4 ultra-processed food markers.
 
-{SUSPICIOUS_ADDITIVES_REFERENCE}
+CRITICAL E-NUMBER MATCHING (BE AGGRESSIVE):
+- E102, E104, E110, E122, E124, E129 = AVOID (Southampton Six dyes, hyperactivity)
+- E131, E133, E150c, E150d, E120, E160b, E172, E153, E160a, E161b = dyes, LIMIT/CAUTION
+- E250, E251, E252 = AVOID (nitrites/nitrates, carcinogen)
+- E310, E320 (BHA), E321 (BHT), E218 = AVOID (carcinogen/endocrine)
+- E621, E627, E631, E635 = LIMIT (MSG/flavor enhancers, overeating trigger)
+- E211, E202, E282, E210, E385 = LIMIT (preservatives)
+- E220-E228 = LIMIT (sulfites)
+- E407, E433, E432-E436, E466, E452, E481, E472e, E491, E460 = LIMIT (emulsifiers, gut inflammation)
+- E412, E415, E440, E410, E414, E322 = CAUTION (thickeners/emulsifiers)
+- E471 = LIMIT (most common UPF emulsifier)
+- E951, E950, E955, E954, E962, E965, E420, E967, E953, E968 = LIMIT (artificial sweeteners)
+- E1404-E1452 = LIMIT (modified starches)
+- E450, E500, E551, E903, E904 = CAUTION (processing aids)
+- E492 (sorbitan tristearate) = LIMIT (emulsifier like E491)
 
-TASK: For each ingredient below, determine if it matches any item on the suspicious additives list.
+OTHER SUSPICIOUS INGREDIENTS:
+- Hidrogenēti tauki, daļēji hidrogenēti = AVOID (trans fats)
+- Maltodekstrīns, dekstroze, glikozes sīrups = LIMIT (industrial sugars)
+- Aromatizētāji, dabīgie aromatizētāji = CAUTION (flavor enhancers)
+- Rauga ekstrakts = LIMIT (hidden MSG)
+- Mehāniski atdalīta gaļa = AVOID
+- Sojas/zirņu olbaltumvielu izolāts, kazeīns, vājpiena pulveris = CAUTION (fillers)
+- Palmu tauki (fractionated) = LIMIT
 
 MATCHING RULES:
-1. Match E-numbers exactly (E471, E621, etc.)
-2. Match Latvian ingredient names (case-insensitive)
-3. Match English equivalents when ingredient is the same substance
-4. Consider synonyms and variations (e.g., "glikozes sīrups" = "glucose syrup")
-5. If ingredient is NOT on the list or is natural, return null for all fields
+1. EXTRACT E-numbers from text (e.g., "emulgatori e492" → match E492)
+2. E-numbers are case-insensitive (e492 = E492)
+3. Match Latvian names: "guāra sveķi" = E412, "ksantāna sveķi" = E415, "karagināns" = E407
+4. Be GENEROUS in matching - if it looks like a suspicious additive, flag it
+5. Only return null if ingredient is clearly NOT on any list (e.g., "ūdens", "sāls", "milti")
 
-INPUT FORMAT: id|ingredient_name
-OUTPUT FORMAT: JSON array with objects containing:
-- id: the ingredient ID (integer)
+INPUT: id|ingredient_name
+OUTPUT: JSON array with objects:
+- id: integer
 - suspicion_level: "avoid", "limit", "caution", or null
 - suspicion_category: "sweetener", "emulsifier", "dye", "flavor_enhancer", "preservative", "filler", "processing_aid", "industrial_fat", or null
-- health_note: brief health concern in Latvian (max 50 chars), or null
+- health_note: brief concern in Latvian (max 50 chars), or null
 
-INGREDIENTS TO ANALYZE:
+INGREDIENTS:
 {ingredient_list}
 
-Respond ONLY with a valid JSON array, no other text."""
+Respond with ONLY valid JSON array, no markdown."""
 
         try:
             response = client.models.generate_content(
@@ -257,7 +280,7 @@ Respond ONLY with a valid JSON array, no other text."""
                 else:
                     results.append({
                         "id": ing_id,
-                        "suspicion_level": None,
+                        "suspicion_level": "clean",
                         "suspicion_category": None,
                         "health_note": None
                     })
@@ -267,7 +290,7 @@ Respond ONLY with a valid JSON array, no other text."""
             for ing in batch:
                 results.append({
                     "id": ing["id"],
-                    "suspicion_level": None,
+                    "suspicion_level": "clean",
                     "suspicion_category": None,
                     "health_note": None
                 })
@@ -276,7 +299,7 @@ Respond ONLY with a valid JSON array, no other text."""
             for ing in batch:
                 results.append({
                     "id": ing["id"],
-                    "suspicion_level": None,
+                    "suspicion_level": "clean",
                     "suspicion_category": None,
                     "health_note": None
                 })
@@ -403,6 +426,7 @@ def get_suspicion_stats():
                     COUNT(*) FILTER (WHERE suspicion_level = 'avoid') as avoid_count,
                     COUNT(*) FILTER (WHERE suspicion_level = 'limit') as limit_count,
                     COUNT(*) FILTER (WHERE suspicion_level = 'caution') as caution_count,
+                    COUNT(*) FILTER (WHERE suspicion_level = 'clean') as clean_count,
                     COUNT(*) FILTER (WHERE is_processed = true AND suspicion_level IS NULL) as unanalyzed,
                     COUNT(*) FILTER (WHERE is_processed = true AND suspicion_level IS NOT NULL) as analyzed
                 FROM ingredient_analysis

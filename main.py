@@ -1443,7 +1443,7 @@ def section_suspicion_analysis():
     suspicion_stats = get_suspicion_stats()
     
     if suspicion_stats:
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
         with col1:
             st.metric("Total Processed", suspicion_stats['total_processed'])
         with col2:
@@ -1453,6 +1453,8 @@ def section_suspicion_analysis():
         with col4:
             st.metric("🟡 Caution", suspicion_stats['caution_count'])
         with col5:
+            st.metric("✅ Clean", suspicion_stats.get('clean_count', 0))
+        with col6:
             analyzed_pct = round((suspicion_stats['analyzed'] / suspicion_stats['total_processed']) * 100, 1) if suspicion_stats['total_processed'] > 0 else 0
             st.metric("Analyzed", f"{suspicion_stats['analyzed']} ({analyzed_pct}%)")
         
