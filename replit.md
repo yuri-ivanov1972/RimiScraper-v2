@@ -117,23 +117,27 @@ The application features a modular Python architecture comprising:
       - **Root cause**: Autoscale designed for bursty request/response workloads, incompatible with long-running scraping
       - **Solution**: Migrate to Reserved VM for 24/7 uninterrupted processing (see below)
       
-    - **AI-Powered Ingredient Categorization System** (updated January 2026):
-      - **Purpose**: Automatically categorize 7,262 unique ingredients using Google AI (Gemini)
-      - **Architecture**: Direct columns on `ingredient_analysis` table (simplified from previous mapping layer)
+    - **Combined AI Ingredient Analysis System** (updated January 2026):
+      - **Purpose**: Single AI pass for categorization + NOVA4 suspicion analysis (18k+ ingredients)
+      - **Architecture**: Combined analyzer replaces separate categorization and suspicion passes
+      - **Performance**: ~40% faster than separate passes (360 API calls vs 460+)
       - **Database Schema** (ingredient_analysis table):
         - `ingredient`: Original normalized ingredient name
         - `clean_name`: AI-cleaned ingredient name (removes parentheses, asterisks, percentages)
         - `category`: 'natural', 'processed', or 'uncategorized'
         - `is_processed`: Boolean flag (TRUE=processed, FALSE=natural, NULL=uncategorized)
+        - `suspicion_level`: 'avoid', 'limit', 'caution', 'clean', or NULL (NULL for natural ingredients)
+        - `suspicion_category`: 'sweetener', 'emulsifier', 'dye', 'flavor_enhancer', 'preservative', 'filler', 'processing_aid', 'industrial_fat'
+        - `health_note`: Brief health concern in Latvian (max 200 chars)
         - `frequency`: How many products contain this ingredient
-      - **Two AI Modes**:
-        - **Batch mode (Option A)**: For backfilling existing ingredients (50 per API call, ~$0.005-0.02 per batch)
-        - **Single mode (Option B)**: For new ingredients during scraping (real-time categorization)
-      - **Backfill UI**: Streamlit "Ingredients" tab with progress tracking and statistics
-      - **Auto-categorization**: New ingredients during scraping get AI-categorized automatically
-      - **Display**: Product Browser shows ingredients with type indicators (🌿 natural / 🏭 processed / ❓ uncategorized)
-      - **Synonym handling**: AI identifies similar ingredients and assigns same clean_name for grouping
-      - **Key files**: `ingredient_ai_categorizer.py`, `ingredient_processor.py`
+      - **Suspicion Logic**:
+        - Natural ingredients: suspicion_level = NULL (not applicable)
+        - Processed + suspicious: suspicion_level = 'avoid'/'limit'/'caution'
+        - Processed + not suspicious: suspicion_level = 'clean'
+      - **Batch size**: 40 ingredients per API call (optimized for accuracy)
+      - **Test Mode**: UI allows 1-2 test batches before full processing
+      - **Key file**: `combined_ingredient_analyzer.py`
+      - **Legacy files** (still available for rollback): `ingredient_ai_categorizer.py`, `suspicion_analyzer.py`
 
 ## External Dependencies
 - **Streamlit**: Web application framework.
