@@ -3,7 +3,6 @@ import re
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from google import genai
 
 GEMINI_MODEL = "gemini-2.5-flash"
 BATCH_SIZE = 40
@@ -18,6 +17,8 @@ VALID_SUSPICION_CATEGORIES = {
 
 def get_gemini_client():
     """Get Gemini client using Replit AI Integrations"""
+    from google import genai
+    
     api_key = os.environ.get("AI_INTEGRATIONS_GEMINI_API_KEY")
     base_url = os.environ.get("AI_INTEGRATIONS_GEMINI_BASE_URL")
     

@@ -1,0 +1,49 @@
+OSError: [Errno 5] Input/output error
+Traceback:
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/exec_code.py", line 88, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/streamlit/runtime/scriptrunner/script_runner.py", line 579, in code_to_exec
+    exec(code, module.__dict__)
+File "/home/runner/workspace/main.py", line 1562, in <module>
+    main()
+File "/home/runner/workspace/main.py", line 1556, in main
+    section_ingredient_import()
+File "/home/runner/workspace/main.py", line 1302, in section_ingredient_import
+    from combined_ingredient_analyzer import (
+File "/home/runner/workspace/combined_ingredient_analyzer.py", line 6, in <module>
+    from google import genai
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/__init__.py", line 18, in <module>
+    from . import interactions
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/interactions.py", line 17, in <module>
+    from ._interactions.types import *
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/_interactions/__init__.py", line 20, in <module>
+    from . import types
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/_interactions/types/__init__.py", line 20, in <module>
+    from .tool import Tool as Tool
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/_interactions/types/tool.py", line 24, in <module>
+    from .._models import BaseModel
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/_interactions/_models.py", line 69, in <module>
+    from ._compat import (
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/genai/_interactions/_compat.py", line 197, in <module>
+    class GenericModel(pydantic.BaseModel): ...
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pydantic/_internal/_model_construction.py", line 226, in __new__
+    complete_model_class(
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pydantic/_internal/_model_construction.py", line 676, in complete_model_class
+    cls.__pydantic_validator__ = create_schema_validator(
+                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pydantic/plugin/_schema_validator.py", line 38, in create_schema_validator
+    plugins = get_plugins()
+              ^^^^^^^^^^^^^
+File "/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/pydantic/plugin/_loader.py", line 39, in get_plugins
+    for entry_point in dist.entry_points:
+                       ^^^^^^^^^^^^^^^^^
+File "/nix/store/6334pjf6w2q623rgvwi499qaiym1p6yv-python3-3.11.14/lib/python3.11/importlib/metadata/__init__.py", line 636, in entry_points
+    return EntryPoints._from_text_for(self.read_text('entry_points.txt'), self)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/6334pjf6w2q623rgvwi499qaiym1p6yv-python3-3.11.14/lib/python3.11/importlib/metadata/__init__.py", line 939, in read_text
+    return self._path.joinpath(filename).read_text(encoding='utf-8')
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+File "/nix/store/6334pjf6w2q623rgvwi499qaiym1p6yv-python3-3.11.14/lib/python3.11/pathlib.py", line 1059, in read_text
+    return f.read()
+           ^^^^^^^^
