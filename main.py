@@ -1301,7 +1301,8 @@ def section_ingredient_import():
     """Section: Combined AI Ingredient Analysis (Categorization + NOVA4 Suspicion)"""
     from combined_ingredient_analyzer import (
         get_analysis_stats, run_test_batch, run_full_analysis, 
-        reset_all_analysis, batch_update_ingredients, BATCH_SIZE
+        reset_all_analysis, batch_update_ingredients, BATCH_SIZE,
+        fix_incomplete_suspicion
     )
     
     st.header("🧪 Combined Ingredient Analysis")
@@ -1333,6 +1334,18 @@ def section_ingredient_import():
             st.metric("🟡 Caution", stats['caution_count'])
         with col8:
             st.metric("✅ Clean", stats['clean_count'])
+        
+        incomplete = stats.get('incomplete_suspicion', 0)
+        if incomplete > 0:
+            st.warning(f"⚠️ {incomplete} processed ingredients need suspicion analysis fix")
+            if st.button("🔧 Fix Incomplete Suspicion Analysis", type="primary"):
+                with st.spinner(f"Fixing {incomplete} ingredients..."):
+                    try:
+                        result = fix_incomplete_suspicion()
+                        st.success(f"Fixed {result.get('processed', 0)} ingredients!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Fix failed: {str(e)}")
         
         analyzed = stats['total'] - stats['unanalyzed']
         if stats['total'] > 0:

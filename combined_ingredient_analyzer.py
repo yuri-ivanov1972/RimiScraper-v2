@@ -315,6 +315,88 @@ def get_unanalyzed_ingredients(limit: int = 1000) -> list[dict]:
         conn.close()
 
 
+def get_incomplete_suspicion_ingredients(limit: int = 1000) -> list[dict]:
+    """Get processed ingredients that are missing suspicion analysis (category set but suspicion_level is NULL)"""
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        return []
+    
+    conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, ingredient 
+                FROM ingredient_analysis 
+                WHERE category = 'processed' AND is_processed = true AND suspicion_level IS NULL
+                ORDER BY frequency DESC NULLS LAST
+                LIMIT %s
+            """, (limit,))
+            return list(cur.fetchall())
+    finally:
+        conn.close()
+
+
+def fix_incomplete_suspicion(progress_callback=None) -> dict:
+    """
+    Fix processed ingredients that are missing suspicion analysis.
+    These were categorized by the old categorizer but never got suspicion analysis.
+    
+    Args:
+        progress_callback: Optional function(processed, total) for progress updates
+        
+    Returns:
+        Dict with statistics
+    """
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        return {"error": "DATABASE_URL not set"}
+    
+    conn = psycopg2.connect(database_url, cursor_factory=RealDictCursor)
+    
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT COUNT(*) as count 
+                FROM ingredient_analysis 
+                WHERE category = 'processed' AND is_processed = true AND suspicion_level IS NULL
+            """)
+            total = cur.fetchone()['count']
+        
+        if total == 0:
+            return {"message": "No incomplete ingredients found", "processed": 0}
+        
+        processed = 0
+        batch_num = 0
+        
+        while True:
+            ingredients = get_incomplete_suspicion_ingredients(limit=BATCH_SIZE)
+            
+            if not ingredients:
+                break
+            
+            batch_num += 1
+            results = analyze_ingredients_batch(ingredients, batch_size=BATCH_SIZE)
+            
+            if results:
+                batch_update_ingredients(conn, results)
+            
+            processed += len(results)
+            
+            if progress_callback:
+                progress_callback(processed, total)
+            
+            print(f"Fixed batch {batch_num}: {len(results)} ingredients ({processed}/{total})")
+        
+        return {
+            "message": "Completed fixing incomplete suspicion analysis",
+            "processed": processed,
+            "total": total
+        }
+    finally:
+        conn.close()
+
+
 def get_analysis_stats() -> dict:
     """Get combined analysis statistics"""
     database_url = os.environ.get("DATABASE_URL")
@@ -335,7 +417,8 @@ def get_analysis_stats() -> dict:
                     COUNT(*) FILTER (WHERE suspicion_level = 'limit') as limit_count,
                     COUNT(*) FILTER (WHERE suspicion_level = 'caution') as caution_count,
                     COUNT(*) FILTER (WHERE suspicion_level = 'clean') as clean_count,
-                    COUNT(*) FILTER (WHERE category = 'natural' AND suspicion_level IS NULL) as natural_null_suspicion
+                    COUNT(*) FILTER (WHERE category = 'natural' AND suspicion_level IS NULL) as natural_null_suspicion,
+                    COUNT(*) FILTER (WHERE category = 'processed' AND is_processed = true AND suspicion_level IS NULL) as incomplete_suspicion
                 FROM ingredient_analysis
             """)
             return cur.fetchone()

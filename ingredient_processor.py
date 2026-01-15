@@ -410,35 +410,45 @@ class IngredientProcessor:
         return None
     
     def _auto_categorize_new_ingredient(self, ingredient_id: int, ingredient_name: str):
-        """Auto-categorize new ingredient using AI (Option B: single ingredient)"""
+        """Auto-categorize new ingredient using combined AI analyzer (categorization + suspicion)"""
         try:
-            from ingredient_ai_categorizer import categorize_single_ingredient
+            from combined_ingredient_analyzer import analyze_ingredients_batch
             
-            result = categorize_single_ingredient(ingredient_name)
+            ingredients = [{'id': ingredient_id, 'ingredient': ingredient_name}]
+            results = analyze_ingredients_batch(ingredients, batch_size=1)
             
-            clean_name = result.get('clean_name') or ingredient_name
-            category = result.get('category') or 'uncategorized'
-            is_processed = result.get('is_processed')
+            if not results:
+                self.status_callback(f"Warning: No result for {ingredient_name}")
+                return
             
-            if category not in ('natural', 'processed', 'uncategorized'):
-                category = 'uncategorized'
-                is_processed = None
+            result = results[0]
             
             update_query = """
                 UPDATE ingredient_analysis 
-                SET clean_name = %s, category = %s, is_processed = %s
+                SET clean_name = %s, 
+                    category = %s, 
+                    is_processed = %s,
+                    suspicion_level = %s,
+                    suspicion_category = %s,
+                    health_note = %s
                 WHERE id = %s
             """
             self._execute_query(update_query, (
-                clean_name,
-                category,
-                is_processed,
+                result.get('clean_name'),
+                result.get('category'),
+                result.get('is_processed'),
+                result.get('suspicion_level'),
+                result.get('suspicion_category'),
+                result.get('health_note'),
                 ingredient_id
             ))
-            self.status_callback(f"AI categorized: {ingredient_name} -> {category}")
+            
+            category = result.get('category', 'uncategorized')
+            suspicion = result.get('suspicion_level', 'N/A')
+            self.status_callback(f"AI analyzed: {ingredient_name} -> {category} (suspicion: {suspicion})")
             
         except Exception as e:
-            self.status_callback(f"Warning: Could not AI-categorize {ingredient_name}: {str(e)}")
+            self.status_callback(f"Warning: Could not AI-analyze {ingredient_name}: {str(e)}")
 
     def _create_ingredient_mapping(self, ingredient_id: int, sku: str):
         """Create product-ingredient mapping"""
