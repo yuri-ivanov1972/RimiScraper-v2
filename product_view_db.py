@@ -239,7 +239,8 @@ class ProductViewDatabase:
             nf.protein,
             nf.salt,
             nf.fiber,
-            nf.ingredients_text
+            nf.ingredients_text,
+            COALESCE(nf.nutrition_manual_edit, FALSE) as nutrition_manual_edit
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id

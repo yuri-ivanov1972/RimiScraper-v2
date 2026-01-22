@@ -485,6 +485,154 @@ def section_product_view():
     db.close()
 
 
+def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
+    """Render inline nutrition edit form with Nutri-Score recalculation"""
+    from nutriscore_calculator import NutriscoreCalculator
+    
+    product_id = product['product_id']
+    form_key = f"nutrition_edit_{product_id}"
+    
+    with st.form(key=form_key):
+        st.markdown("**Uzturvielu dati uz 100g/ml:**")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            energy_kj = st.number_input(
+                "Enerģija (kJ)", 
+                value=float(product.get('energy_kj') or 0),
+                min_value=0.0,
+                step=1.0,
+                key=f"energy_kj_{product_id}"
+            )
+            energy_kcal = st.number_input(
+                "Enerģija (kcal)", 
+                value=float(product.get('energy_kcal') or 0),
+                min_value=0.0,
+                step=1.0,
+                key=f"energy_kcal_{product_id}"
+            )
+            fat_total = st.number_input(
+                "Tauki (g)", 
+                value=float(product.get('fat_total') or 0),
+                min_value=0.0,
+                step=0.1,
+                key=f"fat_total_{product_id}"
+            )
+            fat_saturated = st.number_input(
+                "Piesātinātie tauki (g)", 
+                value=float(product.get('fat_saturated') or 0),
+                min_value=0.0,
+                step=0.1,
+                key=f"fat_saturated_{product_id}"
+            )
+        
+        with col2:
+            carbs_total = st.number_input(
+                "Ogļhidrāti (g)", 
+                value=float(product.get('carbs_total') or 0),
+                min_value=0.0,
+                step=0.1,
+                key=f"carbs_total_{product_id}"
+            )
+            carbs_sugars = st.number_input(
+                "Cukuri (g)", 
+                value=float(product.get('carbs_sugars') or 0),
+                min_value=0.0,
+                step=0.1,
+                key=f"carbs_sugars_{product_id}"
+            )
+            fiber = st.number_input(
+                "Šķiedrvielas (g)", 
+                value=float(product.get('fiber') or 0),
+                min_value=0.0,
+                step=0.1,
+                key=f"fiber_{product_id}"
+            )
+            protein = st.number_input(
+                "Olbaltumvielas (g)", 
+                value=float(product.get('protein') or 0),
+                min_value=0.0,
+                step=0.1,
+                key=f"protein_{product_id}"
+            )
+        
+        salt = st.number_input(
+            "Sāls (g)", 
+            value=float(product.get('salt') or 0),
+            min_value=0.0,
+            step=0.01,
+            key=f"salt_{product_id}"
+        )
+        
+        manual_edit = st.checkbox(
+            "Atzīmēt kā manuāli rediģētu (novērsīs automātisko pārrakstīšanu)",
+            value=bool(product.get('nutrition_manual_edit')),
+            key=f"manual_edit_{product_id}"
+        )
+        
+        submitted = st.form_submit_button("💾 Saglabāt un pārrēķināt Nutri-Score", type="primary")
+        
+        if submitted:
+            try:
+                calculator = NutriscoreCalculator()
+                nutri_result = calculator.calculate_single_product(
+                    energy_kj=energy_kj,
+                    sugars=carbs_sugars,
+                    saturated_fat=fat_saturated,
+                    salt=salt,
+                    protein=protein,
+                    fiber=fiber,
+                    category_code=product.get('rimi_category_code')
+                )
+                
+                new_grade = nutri_result.get('grade') if nutri_result.get('success') else product.get('nutri_score_grade')
+                new_score = nutri_result.get('score') if nutri_result.get('success') else product.get('nutri_score_points')
+                
+                update_query = """
+                    UPDATE nutritionfacts 
+                    SET energy_kj = %s,
+                        energy_kcal = %s,
+                        fat_total = %s,
+                        fat_saturated = %s,
+                        carbs_total = %s,
+                        carbs_sugars = %s,
+                        fiber = %s,
+                        protein = %s,
+                        salt = %s,
+                        nutri_score_grade = %s,
+                        nutri_score_points = %s,
+                        nutrition_manual_edit = %s
+                    WHERE product_id = %s
+                """
+                
+                db._ensure_connection()
+                with db.connection.cursor() as cur:
+                    cur.execute(update_query, (
+                        int(energy_kj) if energy_kj else None,
+                        int(energy_kcal) if energy_kcal else None,
+                        fat_total,
+                        fat_saturated,
+                        carbs_total,
+                        carbs_sugars,
+                        fiber,
+                        protein,
+                        salt,
+                        new_grade,
+                        new_score,
+                        manual_edit,
+                        product_id
+                    ))
+                    db.connection.commit()
+                
+                old_grade = product.get('nutri_score_grade', 'N/A')
+                st.success(f"Saglabāts! Nutri-Score: {old_grade} → {new_grade} ({new_score} punkti)")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Kļūda saglabājot: {str(e)}")
+
+
 def render_product_detail_view():
     """Render detailed product view (similar to reference app)"""
     
@@ -572,6 +720,12 @@ def render_product_detail_view():
     with col3:
         if product.get('fiber') is not None:
             st.metric("Šķiedrvielas", f"{product['fiber']}g")
+    
+    if product.get('nutrition_manual_edit'):
+        st.info("✏️ Šis produkts ir manuāli rediģēts - uzturvielu dati netiks pārrakstīti")
+    
+    with st.expander("✏️ Rediģēt uzturvielu informāciju"):
+        render_nutrition_edit_form(db, product)
     
     # Ingredients
     if product.get('ingredients_text'):

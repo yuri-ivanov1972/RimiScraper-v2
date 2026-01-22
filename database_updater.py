@@ -251,6 +251,16 @@ class DatabaseUpdater:
             else:
                 self.status_callback(f"Insufficient nutrition data for nutri-score calculation (missing: energy_kj={energy_kj}, sugars={carbs_sugars}, sat_fat={fat_saturated}, salt={salt}, protein={protein})")
             
+            # Check if product is manually edited - skip nutrition update if so
+            existing_manual_edit = self._execute_query(
+                "SELECT nutrition_manual_edit FROM nutritionfacts WHERE product_id = %s",
+                (product_id,),
+                fetch=True
+            )
+            if existing_manual_edit and existing_manual_edit[0].get('nutrition_manual_edit'):
+                self.status_callback(f"Skipping nutrition update for product {product_id} - marked as manually edited")
+                return True
+            
             # Insert nutrition data using correct table schema from export
             nutrition_query = """
                 INSERT INTO nutritionfacts 
@@ -272,6 +282,7 @@ class DatabaseUpdater:
                     nutri_score_grade = EXCLUDED.nutri_score_grade,
                     nutri_score_points = EXCLUDED.nutri_score_points,
                     data_source_date = EXCLUDED.data_source_date
+                WHERE NOT COALESCE(nutritionfacts.nutrition_manual_edit, FALSE)
             """
             
             self._execute_query(nutrition_query, (

@@ -272,6 +272,12 @@ class EnhancedDatabaseUpdater:
             )
             
             if existing_nutrition:
+                existing_record = existing_nutrition[0]
+                
+                if existing_record.get('nutrition_manual_edit') and not force_overwrite:
+                    self.status_callback("Skipping nutrition update - product marked as manually edited")
+                    return True
+                
                 # Update existing record - build dynamic UPDATE query
                 update_fields = []
                 update_values = []
@@ -280,8 +286,6 @@ class EnhancedDatabaseUpdater:
                     'ingredients_text', 'energy_kcal', 'energy_kj', 'fat_total', 'fat_saturated',
                     'carbs_total', 'carbs_sugars', 'protein', 'salt', 'fiber'
                 ]
-                
-                existing_record = existing_nutrition[0]
                 
                 for field in nutrition_fields:
                     if field in nutrition_data:
