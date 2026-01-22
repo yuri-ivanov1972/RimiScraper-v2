@@ -395,6 +395,18 @@ def section_product_view():
     col_sidebar, col_main = st.columns([1, 3])
     
     with col_sidebar:
+        st.subheader("🔍 Ātrā meklēšana")
+        product_id_input = st.text_input("Product ID", placeholder="Ievadiet produkta ID", label_visibility="collapsed")
+        if product_id_input:
+            try:
+                product_id = int(product_id_input.strip())
+                st.session_state.selected_product_id = product_id
+                st.rerun()
+            except ValueError:
+                st.error("Nederīgs ID formāts")
+        
+        st.divider()
+        
         st.subheader("📂 Kategorijas")
         
         # "All Products" button
