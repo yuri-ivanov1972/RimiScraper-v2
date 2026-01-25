@@ -411,7 +411,7 @@ def check_exception_rules(product_name: str, category_code: str) -> tuple[float 
     return None, None
 
 
-def estimate_fiber(product_name: str, category_code: str, current_fiber: float | None) -> tuple[float, str, bool]:
+def estimate_fiber(product_name: str, category_code: str, current_fiber: float | None) -> tuple[float, str, bool, str]:
     """
     Estimate fiber content for a product.
     
@@ -421,20 +421,21 @@ def estimate_fiber(product_name: str, category_code: str, current_fiber: float |
         current_fiber: Current fiber value from database
         
     Returns:
-        tuple of (fiber_value, source_description, should_update)
+        tuple of (fiber_value, source_description, should_update, match_type)
         - fiber_value: The fiber amount to use
         - source_description: Explanation of where value came from
         - should_update: Whether database should be updated
+        - match_type: 'existing', 'exception', or 'category'
     """
     if current_fiber is not None and current_fiber > 0:
-        return current_fiber, "Existing scraped/USDA value", False
+        return current_fiber, "Existing scraped/USDA value", False, "existing"
     
     exception_fiber, exception_reason = check_exception_rules(product_name, category_code)
     if exception_fiber is not None:
-        return exception_fiber, f"Exception rule: {exception_reason}", True
+        return exception_fiber, f"Exception rule: {exception_reason}", True, "exception"
     
     category_fiber = get_category_fiber_default(category_code)
-    return category_fiber, f"Category default for {category_code}", True
+    return category_fiber, f"Category default for {category_code}", True, "category"
 
 
 def batch_estimate_fiber(products: list[dict]) -> list[dict]:
@@ -445,11 +446,11 @@ def batch_estimate_fiber(products: list[dict]) -> list[dict]:
         products: List of dicts with keys: product_id, name, category_code, fiber
         
     Returns:
-        List of dicts with keys: product_id, name, old_fiber, new_fiber, source, should_update
+        List of dicts with keys: product_id, name, old_fiber, new_fiber, source, should_update, match_type
     """
     results = []
     for product in products:
-        new_fiber, source, should_update = estimate_fiber(
+        new_fiber, source, should_update, match_type = estimate_fiber(
             product.get('name', ''),
             product.get('category_code', ''),
             product.get('fiber')
@@ -461,6 +462,7 @@ def batch_estimate_fiber(products: list[dict]) -> list[dict]:
             'old_fiber': product.get('fiber'),
             'new_fiber': new_fiber,
             'source': source,
-            'should_update': should_update
+            'should_update': should_update,
+            'match_type': match_type
         })
     return results

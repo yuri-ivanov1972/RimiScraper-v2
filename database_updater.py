@@ -231,11 +231,11 @@ class DatabaseUpdater:
                     from fiber_estimator import estimate_fiber
                     # Try to get product name - may not be in nutrition_data
                     product_name = nutrition_data.get('product_name', nutrition_data.get('name', ''))
-                    estimated_fiber, source, should_update = estimate_fiber(product_name, category_code, fiber)
+                    estimated_fiber, source, should_update, match_type = estimate_fiber(product_name, category_code, fiber)
                     if should_update and estimated_fiber > 0:
                         fiber = estimated_fiber
                         # Estimated fiber keeps is_fiber_correct=False until manually verified
-                        self.status_callback(f"Estimated fiber: {fiber}g ({source})")
+                        self.status_callback(f"Estimated fiber: {fiber}g ({source}) [{match_type}]")
                 except Exception as e:
                     self.status_callback(f"Fiber estimation failed: {e}")
             

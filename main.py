@@ -1564,13 +1564,38 @@ def section_fiber_estimation():
         
         st.write(f"Found **{len(products)}** products with missing fiber")
         
+        calculator = NutriscoreCalculator()
         results = []
         for product in products:
-            new_fiber, source, should_update = estimate_fiber(
+            new_fiber, source, should_update, match_type = estimate_fiber(
                 product.get('name', ''),
                 product.get('category_code', ''),
                 product.get('fiber')
             )
+            
+            new_grade = None
+            if new_fiber > 0 and all([
+                product.get('energy_kj'), 
+                product.get('carbs_sugars') is not None,
+                product.get('fat_saturated') is not None, 
+                product.get('salt') is not None,
+                product.get('protein') is not None
+            ]):
+                try:
+                    calc_result = calculator.calculate_single_product(
+                        energy_kj=float(product['energy_kj']),
+                        sugars=float(product['carbs_sugars']),
+                        saturated_fat=float(product['fat_saturated']),
+                        salt=float(product['salt']),
+                        protein=float(product['protein']),
+                        fiber=new_fiber,
+                        category_code=product.get('category_code')
+                    )
+                    if calc_result.get('success'):
+                        new_grade = calc_result['grade']
+                except Exception:
+                    pass
+            
             results.append({
                 'product_id': product['product_id'],
                 'sku': product['sku'],
@@ -1578,8 +1603,9 @@ def section_fiber_estimation():
                 'category': product.get('category_code', 'N/A'),
                 'old_fiber': product.get('fiber') or 0,
                 'new_fiber': new_fiber,
-                'source': source,
-                'current_grade': product.get('current_grade'),
+                'match_type': match_type,
+                'before_grade': product.get('current_grade'),
+                'new_grade': new_grade,
                 'energy_kj': product.get('energy_kj'),
                 'sugars': product.get('carbs_sugars'),
                 'saturated_fat': product.get('fat_saturated'),
@@ -1591,7 +1617,8 @@ def section_fiber_estimation():
         st.write(f"**{len(updates_needed)}** products will get fiber estimates")
         
         import pandas as pd
-        df = pd.DataFrame(results[:limit_preview])
+        display_cols = ['sku', 'name', 'category', 'old_fiber', 'new_fiber', 'match_type', 'before_grade', 'new_grade']
+        df = pd.DataFrame(results[:limit_preview])[display_cols]
         st.dataframe(df, use_container_width=True)
         
         if mode == "Apply Fiber Estimates" and updates_needed:
@@ -1645,7 +1672,7 @@ def section_fiber_estimation():
                                         nutri_score_points = %s
                                     WHERE product_id = %s
                                 """, (new_fiber, new_grade, new_score, result['product_id']))
-                                if result['current_grade'] != new_grade:
+                                if result['before_grade'] != new_grade:
                                     grade_changed_count += 1
                             else:
                                 cur.execute("""
