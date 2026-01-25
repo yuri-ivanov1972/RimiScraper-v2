@@ -1,0 +1,315 @@
+category_code,name,fiber
+SH-11-10-1,Vegāniem un veģetāriešiem - Siers,0.5
+SH-11-10-2,Vegāniem un veģetāriešiem - Augu dzērieni,0.8
+SH-11-10-3,Vegāniem un veģetāriešiem - Deserti,1.2
+SH-11-10-4,Vegāniem un veģetāriešiem - Krēms un majonēze,0.2
+SH-11-10-5,Vegāniem un veģetāriešiem - Sviesta alternatīvas,0.0
+SH-11-1-1,Piena produkti un olas - Biezpiens - Dažādu veidu biezpiens,0.0
+SH-11-1-2,Piena produkti un olas - Biezpiens - Mājas siers,0.0
+SH-11-2-3,Piena produkti un olas - Jogurti un deserti - Biezpiena sieriņi,0.0
+SH-11-2-4,Piena produkti un olas - Jogurti un deserti - Deserti,0.0
+SH-11-2-5,Piena produkti un olas - Jogurti un deserti - Dzeramais jogurts,0.0
+SH-11-2-6,Piena produkti un olas - Jogurti un deserti - Jogurts ar piedevām,0.1
+SH-11-2-7,Piena produkti un olas - Jogurti un deserti - Jogurts bez piedevām,0.0
+SH-11-3-8,Piena produkti un olas - Kefīrs un skābpiena produkti - Kefīrs un kefīra dzērieni,0.0
+SH-11-3-9,Piena produkti un olas - Kefīrs un skābpiena produkti - Paniņas,0.0
+SH-11-4-10,Piena produkti un olas - Krējums - Piedevas kafijai un tējai,0.0
+SH-11-4-11,Piena produkti un olas - Krējums - Saldais krējums,0.0
+SH-11-4-12,Piena produkti un olas - Krējums - Skābais krējums un tā izstrādājumi,0.0
+SH-11-5-1,Piena produkti un olas - Majonēze - Majonēze burciņās,0.0
+SH-11-5-3,Piena produkti un olas - Majonēze - Majonēze paciņās,0.0
+SH-11-5-5,Piena produkti un olas - Majonēze - Majonēze spainītī,0.0
+SH-11-6-14,Piena produkti un olas - Olas - Citas olas,0.0
+SH-11-6-16,Piena produkti un olas - Olas - Olu produkti,0.0
+SH-11-6-17,Piena produkti un olas - Olas - Bioloģiskājā lauksaimniecībā dētas olas Nr.0,0.0
+SH-11-6-18,Piena produkti un olas - Olas - Brīvos turēšanas apstākļos dētas vistu olas Nr.1,0.0
+SH-11-6-19,Piena produkti un olas - Olas - Kūtī dētas vistu olas Nr.2,0.0
+SH-11-6-20,Piena produkti un olas - Olas - Sprostos dētas vistu olas Nr.3,0.0
+SH-11-7-16,Piena produkti un olas - Sviests un margarīns - Margarīni,0.0
+SH-11-7-17,Piena produkti un olas - Sviests un margarīns - Sviests,0.0
+SH-11-7-18,Piena produkti un olas - Sviests un margarīns - Sviests ar piedevām,0.0
+SH-11-7-19,Piena produkti un olas - Sviests un margarīns - Tauku maisījumi,0.0
+SH-11-8-1,Piena produkti un olas - Piens - Pilnpiens,0.0
+SH-11-8-2,Piena produkti un olas - Piens - Bezlaktozes un citi pieni,0.0
+SH-11-8-21,Piena produkti un olas - Piens - Kondensētais piens,0.0
+SH-11-8-22,Piena produkti un olas - Piens - Pasterizēts piens,0.0
+SH-11-8-23,Piena produkti un olas - Piens - Piens ar piedevām,0.0
+SH-11-8-24,Piena produkti un olas - Piens - UHT piens,0.0
+SH-11-9-25,Piena produkti un olas - Siers - Cietais siers,0.0
+SH-11-9-26,Piena produkti un olas - Siers - Fermentētais siers,0.0
+SH-11-9-27,Piena produkti un olas - Siers - Feta Mozzarella siers,0.0
+SH-11-9-28,Piena produkti un olas - Siers - Kausētais siers,0.0
+SH-11-9-29,Piena produkti un olas - Siers - Kazas aitas siers,0.0
+SH-11-9-30,Piena produkti un olas - Siers - Krēmsiers,0.0
+SH-11-9-31,Piena produkti un olas - Siers - Pārējie sieri,0.0
+SH-11-9-32,Piena produkti un olas - Siers - Pelējuma siers,0.0
+SH-12-1-1,Saldētie ēdieni - Saldējums un ledus - Ledus,0.0
+SH-12-1-2,Saldētie ēdieni - Saldējums un ledus - Lielo iepakojumu saldējumi,0.1
+SH-12-1-3,Saldētie ēdieni - Saldējums un ledus - Porcijas saldējumi,0.1
+SH-12-1-4,Saldētie ēdieni - Saldējums un ledus - Saldētas sulas saldējumi,0.2
+SH-12-3-6,Saldētie ēdieni - Saldētas zivis un jūras veltes - Saldētas garneles,0.0
+SH-12-3-7,Saldētie ēdieni - Saldētas zivis un jūras veltes - Saldētas jūras veltes,0.0
+SH-12-3-8,Saldētie ēdieni - Saldētas zivis un jūras veltes - Saldētas zivis,0.0
+SH-12-3-9,Saldētie ēdieni - Saldētas zivis un jūras veltes - Saldēti zivju ēdieni,0.5
+SH-12-4-10,Saldētie ēdieni - Saldēti dārzeņi un augļi - Saldēti augļi un ogas,3.5
+SH-12-4-11,Saldētie ēdieni - Saldēti dārzeņi un augļi - Saldēti dārzeņi un maisījumi,2.8
+SH-12-4-12,Saldētie ēdieni - Saldēti dārzeņi un augļi - Saldēti kartupeļi,2.2
+SH-12-5-14,Saldētie ēdieni - Saldēti ēdieni un konditorejas izstrādājumi - Saldētas picas,2.0
+SH-12-5-15,Saldētie ēdieni - Saldēti ēdieni un konditorejas izstrādājumi - Saldētas maizītes,1.8
+SH-12-5-16,Saldētie ēdieni - Saldēti ēdieni un konditorejas izstrādājumi - Saldēti otrie ēdieni,2.0
+SH-12-5-17,Saldētie ēdieni - Saldēti ēdieni un konditorejas izstrādājumi - Saldēti pelmeņi vareņiki,1.5
+SH-13-10-24,Saldumi un uzkodas - Saldumi - Austrumu saldumi,2.5
+SH-13-10-25,Saldumi un uzkodas - Saldumi - Dražejas,1.0
+SH-13-10-26,Saldumi un uzkodas - Saldumi - Īrisi,0.0
+SH-13-10-27,Saldumi un uzkodas - Saldumi - Karameles,0.0
+SH-13-10-28,Saldumi un uzkodas - Saldumi - Konfektes ar alkohola pildījumu,0.5
+SH-13-10-30,Saldumi un uzkodas - Saldumi - Marmelāde,0.2
+SH-13-10-31,Saldumi un uzkodas - Saldumi - Šokolādes konfektes,2.5
+SH-13-10-32,Saldumi un uzkodas - Saldumi - Konfektes kastēs,2.0
+SH-13-10-33,Saldumi un uzkodas - Saldumi - Trifeles,3.0
+SH-13-10-34,Saldumi un uzkodas - Saldumi - Zefīrs,0.0
+SH-13-10-35,Saldumi un uzkodas - Saldumi - Želejas konfektes un košļājamās konfektes,0.0
+SH-13-14-51,Saldumi un uzkodas - Šokolāde - Baltā šokolāde,0.0
+SH-13-14-53,Saldumi un uzkodas - Šokolāde - Piena šokolāde,3.0
+SH-13-14-54,Saldumi un uzkodas - Šokolāde - Tumšā šokolāde,8.0
+SH-13-16-57,Saldumi un uzkodas - Vafeles - Vafeles,1.5
+SH-13-16-59,Saldumi un uzkodas - Vafeles - Vafeļu tortes,1.5
+SH-13-16-60,Saldumi un uzkodas - Batoniņi - Šokolādes augļu un marcipāna,4.0
+SH-13-2-2,Saldumi un uzkodas - Bērnu saldumi - Citi bērnu saldumi,0.5
+SH-13-2-3,Saldumi un uzkodas - Bērnu saldumi - Konfektes uz kociņa,0.0
+SH-13-2-5,Saldumi un uzkodas - Bērnu saldumi - Šokolādes olas,2.0
+SH-13-3-6,Saldumi un uzkodas - Cepumi - Piparkūkas un sezonāli piedāvājumi,2.0
+SH-13-3-7,Saldumi un uzkodas - Cepumi - Saldie cepumi,1.8
+SH-13-3-8,Saldumi un uzkodas - Cepumi - Sāļie cepumi,2.2
+SH-13-4-10,Saldumi un uzkodas - Čipsi - Kartupeļu čipsi,3.5
+SH-13-4-11,Saldumi un uzkodas - Čipsi - Maizes čipsi,3.0
+SH-13-4-12,Saldumi un uzkodas - Čipsi - Kukurūzas čipsi,4.0
+SH-13-4-9,Saldumi un uzkodas - Čipsi - Augļu/dārzeņu čipsi,6.0
+SH-13-6-1,Saldumi un uzkodas - Košļājamās gumijas un pastilas - Košļājamās gumijas,0.0
+SH-13-6-2,Saldumi un uzkodas - Košļājamās gumijas un pastilas - Pastilas,1.0
+SH-13-9-17,Saldumi un uzkodas - Rieksti un žāvēti augļi - Citi,5.0
+SH-13-9-18,Saldumi un uzkodas - Rieksti un žāvēti augļi - Rieksti,7.5
+SH-13-9-20,Saldumi un uzkodas - Rieksti un žāvēti augļi - Sēklas,8.0
+SH-13-9-21,Saldumi un uzkodas - Rieksti un žāvēti augļi - Žāvēti augļi un ogas,6.5
+SH-13-9-23,Saldumi un uzkodas - Rieksti un žāvēti augļi - Žāvētu augļu un riekstu maisījumi,7.0
+SH-16-1,Vegāniem un veģetāriešiem - Gaļas un zivs alternatīvas,4.5
+SH-16-2-1,Vegāniem un veģetāriešiem - Saldēti ēdieni un saldējums - Saldētas picas,2.5
+SH-16-2-2,Vegāniem un veģetāriešiem - Saldēti ēdieni un saldējums - Saldēti otrie ēdieni,3.0
+SH-16-2-3,Vegāniem un veģetāriešiem - Saldēti ēdieni un saldējums - Saldējums,0.5
+SH-2-1-2,Augļi un dārzeņi - Augļi un ogas - Āboli un bumbieri,2.4
+SH-2-1-3,Augļi un dārzeņi - Augļi un ogas - Banāni,2.6
+SH-2-1-4,Augļi un dārzeņi - Augļi un ogas - Citrusaugļi,2.4
+SH-2-1-5,Augļi un dārzeņi - Augļi un ogas - Eksotiskie augļi,2.5
+SH-2-1-6,Augļi un dārzeņi - Augļi un ogas - Melones un arbūzi,0.5
+SH-2-1-7,Augļi un dārzeņi - Augļi un ogas - Kauliņaugļi,1.8
+SH-2-1-9,Augļi un dārzeņi - Augļi un ogas - Ogas,4.0
+SH-2-2-10,Augļi un dārzeņi - Dārzeņi - Bietes un citi sakņaugi,2.8
+SH-2-2-12,Augļi un dārzeņi - Dārzeņi - Gurķi un tomāti,1.2
+SH-2-2-13,Augļi un dārzeņi - Dārzeņi - Kartupeļi un burkāni,2.5
+SH-2-2-14,Augļi un dārzeņi - Dārzeņi - Pākšaugi kukurūza un sparģeļi,4.5
+SH-2-2-16,Augļi un dārzeņi - Dārzeņi - Paprika un pipari,2.0
+SH-2-2-17,Augļi un dārzeņi - Dārzeņi - Pārstrādātie dārzeņi,2.5
+SH-2-2-18,Augļi un dārzeņi - Dārzeņi - Kāposti un salāti,2.2
+SH-2-2-19,Augļi un dārzeņi - Dārzeņi - Sīpoli puravi un ķiploki,1.8
+SH-2-2-20,Augļi un dārzeņi - Dārzeņi - Garšaugi,2.5
+SH-2-2-9,Augļi un dārzeņi - Dārzeņi - Ķirbji un kabačveidīgie,1.5
+SH-4-10-55,Iepakotā pārtika - Konservēti produkti - Citi konservēti dārzeņi,2.5
+SH-4-10-56,Iepakotā pārtika - Konservēti produkti - Ievārījumi marmelādes un saldās mērces,1.0
+SH-4-10-57,Iepakotā pārtika - Konservēti produkti - Konservēta kukurūza,2.5
+SH-4-10-58,Iepakotā pārtika - Konservēti produkti - Konservēta paprika,1.5
+SH-4-10-59,Iepakotā pārtika - Konservēti produkti - Konservētas bietes,2.5
+SH-4-10-60,Iepakotā pārtika - Konservēti produkti - Konservētas olīvas,3.0
+SH-4-10-61,Iepakotā pārtika - Konservēti produkti - Konservētas sēnes,2.2
+SH-4-10-62,Iepakotā pārtika - Konservēti produkti - Konservēti augļi un ogas,1.8
+SH-4-10-63,Iepakotā pārtika - Konservēti produkti - Konservēti biezeņi,2.0
+SH-4-10-64,Iepakotā pārtika - Konservēti produkti - Konservēti ēdieni un zupas,1.5
+SH-4-10-65,Iepakotā pārtika - Konservēti produkti - Konservēti gurķi,1.0
+SH-4-10-66,Iepakotā pārtika - Konservēti produkti - Konservēti pākšaugi,6.5
+SH-4-10-67,Iepakotā pārtika - Konservēti produkti - Konservēti tomāti,1.2
+SH-4-10-68,Iepakotā pārtika - Konservēti produkti - Konservēti zirņi,5.0
+SH-4-10-69,Iepakotā pārtika - Konservēti produkti - Medus,0.0
+SH-4-10-70,Iepakotā pārtika - Konservēti produkti - Šokolādes un riekstu krēmi,3.0
+SH-4-1-1,Iepakotā pārtika - Ātri pagatavojami ēdieni - Ātri pagatavojamas mērces un maisījumi,1.0
+SH-4-11-71,Iepakotā pārtika - Makaroni - Citi makaronu veidi,3.0
+SH-4-11-72,Iepakotā pārtika - Makaroni - Garie makaroni,3.0
+SH-4-11-73,Iepakotā pārtika - Makaroni - Īsie makaroni,3.0
+SH-4-11-74,Iepakotā pārtika - Makaroni - Lazanja kaneloni makaroni,3.0
+SH-4-11-75,Iepakotā pārtika - Makaroni - Olu makaroni,2.5
+SH-4-11-76,Iepakotā pārtika - Makaroni - Pilngraudu makaroni,7.0
+SH-4-1-2,Iepakotā pārtika - Ātri pagatavojami ēdieni - Ātri pagatavojamas nūdeles un makaroni,2.0
+SH-4-12-77,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Adžika,1.5
+SH-4-12-78,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Citas mērces,1.0
+SH-4-12-79,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Mārrutki,2.0
+SH-4-12-80,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Mērces ēdiena gatavošanai,1.2
+SH-4-12-81,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Pesto,2.5
+SH-4-12-82,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Salātu mērces,0.5
+SH-4-12-83,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Sinepes,2.0
+SH-4-12-84,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Kečupi,0.8
+SH-4-12-85,Iepakotā pārtika - Mērces kečupi sinepes mārrutki - Tomātu mērces un pastas,2.0
+SH-4-1-3,Iepakotā pārtika - Ātri pagatavojami ēdieni - Ātri pagatavojamas putras,6.0
+SH-4-13-86,Iepakotā pārtika - Milti un miltu maisījumi - Citi miltu veidi,5.0
+SH-4-13-87,Iepakotā pārtika - Milti un miltu maisījumi - Kartupeļu milti un ciete,0.0
+SH-4-13-88,Iepakotā pārtika - Milti un miltu maisījumi - Kviešu milti,2.7
+SH-4-13-89,Iepakotā pārtika - Milti un miltu maisījumi - Miltu maisījumi,3.0
+SH-4-13-90,Iepakotā pārtika - Milti un miltu maisījumi - Rudzu milti,12.0
+SH-4-1-4,Iepakotā pārtika - Ātri pagatavojami ēdieni - Ātri pagatavojamas zupas,1.0
+SH-4-14-91,Iepakotā pārtika - Pasaules virtuve - Citu valstu virtuves,2.0
+SH-4-14-92,Iepakotā pārtika - Pasaules virtuve - Japāņu ēdieni,1.5
+SH-4-14-93,Iepakotā pārtika - Pasaules virtuve - Kokosa piens,0.0
+SH-4-14-94,Iepakotā pārtika - Pasaules virtuve - Ķiniešu ēdieni,1.5
+SH-4-14-95,Iepakotā pārtika - Pasaules virtuve - Meksikāņu ēdieni,3.0
+SH-4-14-96,Iepakotā pārtika - Pasaules virtuve - Nūdeles,2.0
+SH-4-14-97,Iepakotā pārtika - Pasaules virtuve - Sojas mērces,0.5
+SH-4-14-98,Iepakotā pārtika - Pasaules virtuve - Taizemes ēdieni,1.5
+SH-4-1-5,Iepakotā pārtika - Garšvielas - Buljoni,0.0
+SH-4-15-100,Iepakotā pārtika - Pākšaugi - Lēcas,11.0
+SH-4-15-103,Iepakotā pārtika - Pākšaugi - Zirņi,15.0
+SH-4-15-104,Iepakotā pārtika - Pākšaugi - Pupiņas,15.0
+SH-4-15-99,Iepakotā pārtika - Pākšaugi - Citi pākšaugu un graudaugu produkti,8.0
+SH-4-16,Iepakotā pārtika - Graudaugi un putraimi - Rīsi,1.3
+SH-4-17-107,Iepakotā pārtika - Speciālā pārtika un galetes - Bezglutēna produkti,3.0
+SH-4-17-108,Iepakotā pārtika - Speciālā pārtika un galetes - Citi speciālie pārtikas produkti,3.0
+SH-4-17-109,Iepakotā pārtika - Speciālā pārtika un galetes - Augļu un riekstu batoniņi,6.0
+SH-4-17-110,Iepakotā pārtika - Speciālā pārtika un galetes - Diabētiskie produkti,2.0
+SH-4-17-111,Iepakotā pārtika - Speciālā pārtika un galetes - Galetes,4.0
+SH-4-18-1,Iepakotā pārtika - Sporta uzturs - Proteīna batoniņi,5.0
+SH-4-18-2,Iepakotā pārtika - Sporta uzturs - Pulveri,1.0
+SH-4-18-3,Iepakotā pārtika - Sporta uzturs - Gēli un tabletes,0.0
+SH-4-19-115,Iepakotā pārtika - Tēja - Augļu tējas,0.0
+SH-4-19-116,Iepakotā pārtika - Tēja - Melnā tēja,0.0
+SH-4-19-117,Iepakotā pārtika - Tēja - Speciālās tējas,0.0
+SH-4-19-118,Iepakotā pārtika - Tēja - Tējas komplekti un dāvanas,0.0
+SH-4-19-119,Iepakotā pārtika - Tēja - Zaļā tēja,0.0
+SH-4-19-120,Iepakotā pārtika - Tēja - Zāļu tējas,0.0
+SH-4-2-7,Iepakotā pārtika - Brokastu pārslas un musli - Brokastu pārslas,5.0
+SH-4-2-8,Iepakotā pārtika - Brokastu pārslas un musli - Musli,8.0
+SH-4-2-9,Saldumi un uzkodas - Batoniņi - Musli,6.0
+SH-4-3-11,Iepakotā pārtika - Eļļas un etiķi - Ābolu etiķi,0.0
+SH-4-3-12,Iepakotā pārtika - Eļļas un etiķi - Balzamiko etiķi un mērces,0.0
+SH-4-3-13,Iepakotā pārtika - Eļļas un etiķi - Galda etiķi,0.0
+SH-4-3-14,Iepakotā pārtika - Eļļas un etiķi - Kokosriekstu eļļa,0.0
+SH-4-3-15,Iepakotā pārtika - Eļļas un etiķi - Olīveļļa,0.0
+SH-4-3-16,Iepakotā pārtika - Eļļas un etiķi - Rapšu eļļa,0.0
+SH-4-3-17,Iepakotā pārtika - Eļļas un etiķi - Saulespuķu eļļa,0.0
+SH-4-3-18,Iepakotā pārtika - Eļļas un etiķi - Speciālās un citas eļļas,0.0
+SH-4-3-19,Iepakotā pārtika - Eļļas un etiķi - Vīna etiķi,0.0
+SH-4-3-20,Iepakotā pārtika - Eļļas un etiķi - Vīnogu eļļa,0.0
+SH-4-4-21,Iepakotā pārtika - Garšvielas - Garšvielas un garšaugi,0.0
+SH-4-4-22,Iepakotā pārtika - Garšvielas - Garšvielu maisījumi,0.0
+SH-4-4-23,Iepakotā pārtika - Garšvielas - Marinādes,0.5
+SH-4-4-24,Iepakotā pārtika - Garšvielas - Pipari,0.0
+SH-4-4-25,Iepakotā pārtika - Garšvielas - Sāls,0.0
+SH-4-4-26,Iepakotā pārtika - Garšvielas - Universālās garšvielas,0.0
+SH-4-5-27,Iepakotā pārtika - Graudaugi un putraimi - Citi putraimi un graudu maisījumi,7.0
+SH-4-5-28,Iepakotā pārtika - Graudaugi un putraimi - Griķi,10.0
+SH-4-5-29,Iepakotā pārtika - Graudaugi un putraimi - Grūbas un pērļu grūbas,10.0
+SH-4-5-30,Iepakotā pārtika - Graudaugi un putraimi - Manna bulgurs un kuskuss,3.5
+SH-4-6-31,Iepakotā pārtika - Graudaugu pārslas - Auzu pārslas,10.0
+SH-4-6-32,Iepakotā pārtika - Ātri pagatavojami ēdieni - Ātri pagatavojamas pārslu putras,7.0
+SH-4-6-33,Iepakotā pārtika - Graudaugu pārslas - Citas pārslas,8.0
+SH-4-6-34,Iepakotā pārtika - Graudaugu pārslas - Dažādu graudu pārslas,9.0
+SH-4-6-35,Iepakotā pārtika - Graudaugu pārslas - Griķu un rīsu pārslas,4.0
+SH-4-7-38,Iepakotā pārtika - Kafija un kakao - Cigoriņu un miežu dzērieni,0.0
+SH-4-7-39,Iepakotā pārtika - Kafija un kakao - Kafija kapsulās,0.0
+SH-4-7-40,Iepakotā pārtika - Kafija un kakao - Kafijas dzērieni,0.0
+SH-4-7-41,Iepakotā pārtika - Kafija un kakao - Kafijas pupiņas,0.0
+SH-4-7-42,Iepakotā pārtika - Kafija un kakao - Malta kafija,0.0
+SH-4-7-43,Iepakotā pārtika - Kafija un kakao - Šķīstošā kafija,0.0
+SH-4-7-44,Iepakotā pārtika - Kafija un kakao - Kakao,30.0
+SH-4-9-48,Iepakotā pārtika - Saldās garšvielas - Cukurs,0.0
+SH-4-9-49,Iepakotā pārtika - Saldās garšvielas - Konditorijas garšvielas,0.0
+SH-4-9-50,Iepakotā pārtika - Saldās garšvielas - Kūku rotājumi,0.0
+SH-4-9-51,Iepakotā pārtika - Saldās garšvielas - Raugs un citi rauga izstrādājumi,0.0
+SH-4-9-53,Iepakotā pārtika - Saldās garšvielas - Sausie desertu maisījumi,0.5
+SH-4-9-54,Iepakotā pārtika - Saldās garšvielas - Želeja,0.0
+SH-5-1-1,Dzērieni - Bezalkoholiskais alus sidri un vīni - Bezalkoholiskais alus,0.0
+SH-5-11-1,Dzērieni - Svaigas sulas un smūtiji - Augļu sulas un smūtiji,1.5
+SH-5-11-2,Dzērieni - Svaigas sulas un smūtiji - Dārzeņu sulas un smūtiji,1.8
+SH-5-1-2,Dzērieni - Bezalkoholiskais alus sidri un vīni - Bezalkoholiskais sidrs,0.0
+SH-5-12-18,Dzērieni - Ūdens - Gāzēts ūdens,0.0
+SH-5-12-19,Dzērieni - Ūdens - Negāzēts ūdens,0.0
+SH-5-12-20,Dzērieni - Ūdens - Ūdens ar garšām,0.0
+SH-5-1-3,Dzērieni - Bezalkoholiskais alus sidri un vīni - Bezalkoholiskais vīns,0.0
+SH-5-4-5,Dzērieni - Limonādes - Gāzētas limonādes,0.0
+SH-5-4-6,Dzērieni - Limonādes - Kvass,0.0
+SH-5-4-7,Dzērieni - Limonādes - Ledus tējas,0.0
+SH-5-4-8,Dzērieni - Limonādes - Negāzētas limonādes,0.0
+SH-5-4-9,Dzērieni - Limonādes - Toniki,0.0
+SH-5-6-1,Dzērieni - Sīrupi - Kafijas un kokteiļu sīrupi,0.0
+SH-5-6-2,Dzērieni - Sīrupi - Ogu un augļu sīrupi,0.0
+SH-5-7-12,Dzērieni - Sporta un funkcionālie dzērieni - Sporta dzērieni,0.0
+SH-5-7-13,Dzērieni - Sporta un funkcionālie dzērieni - Vitaminizētais ūdens,0.0
+SH-5-8-1,Dzērieni - Sulas un sulu dzērieni - Ābolu un miksētas ābolu,0.2
+SH-5-8-2,Dzērieni - Sulas un sulu dzērieni - Citrusaugļu,0.2
+SH-5-8-3,Dzērieni - Sulas un sulu dzērieni - Ogu,0.3
+SH-5-8-4,Dzērieni - Sulas un sulu dzērieni - Dārzeņu,0.8
+SH-5-8-5,Dzērieni - Sulas un sulu dzērieni - Multiaugļu,0.2
+SH-5-8-6,Dzērieni - Sulas un sulu dzērieni - Citu augļu sulas,0.2
+SH-6-10-26,Pārstrādāta gaļa - Auksti kūpinātā gaļa,0.0
+SH-6-10-27,Pārstrādāta gaļa - Karsti kūpinātā gaļa,0.0
+SH-6-11,Svaiga gaļa - Dažādu veidu maltā gaļa,0.0
+SH-6-1-1,Cīsiņi sardeles desiņas - Cīsiņi un sardeles,0.0
+SH-6-1-2,Cīsiņi sardeles desiņas - Grila desiņas,0.0
+SH-6-13-1,Pārstrādāti jūras produkti un ikri - Ikri,0.0
+SH-6-13-2,Pārstrādāti jūras produkti un ikri - Jūras kāposti,2.0
+SH-6-13-3,Pārstrādāti jūras produkti un ikri - Pārstādātas jūras veltes,0.0
+SH-6-14-32,Pārstrādātās zivis - Auksti kūpinātas zivis,0.0
+SH-6-14-33,Pārstrādātās zivis - Karsti kūpinātas zivis,0.0
+SH-6-14-34,Pārstrādātās zivis - Krabju nūjiņas,0.0
+SH-6-14-35,Pārstrādātās zivis - Nēģi,0.0
+SH-6-14-36,Pārstrādātās zivis - Sālītas marinētas zivis zivis eļļā,0.0
+SH-6-14-37,Pārstrādātās zivis - Vītinātas zivis,0.0
+SH-6-14-38,Pārstrādātās zivis - Zivju un ikru pastētes,0.0
+SH-6-14-39,Pārstrādātās zivis - Zivju salāti un maltītes,1.0
+SH-6-15-40,Svaiga gaļa - Cūkgaļa,0.0
+SH-6-15-41,Svaiga gaļa - Liellopa un teļa gaļa,0.0
+SH-6-15-42,Svaiga gaļa - Svaigas gaļas subprodukti,0.0
+SH-6-15-5,Svaiga gaļa - Truša gaļa,0.0
+SH-6-15-6,Svaiga gaļa - Jēra gaļa,0.0
+SH-6-16-45,Svaiga gaļa - Tītara un pīles gaļa,0.0
+SH-6-16-46,Svaiga gaļa - Vistas gaļa,0.0
+SH-6-17-48,Marinēta gaļa - Mājputnu gaļa,0.0
+SH-6-17-49,Marinēta gaļa - Cūkgaļa,0.0
+SH-6-18,Svaigās zivis un jūrasveltes - Svaigās jūras veltes,0.0
+SH-6-19-51,Svaigās zivis un jūrasveltes - Veselas zivis,0.0
+SH-6-19-52,Svaigās zivis un jūrasveltes - Zivju filejas,0.0
+SH-6-20-4,Gatavās maltītes,1.5
+SH-6-21,Pārstrādāta gaļa - Vītinātās gaļas produkti,0.0
+SH-6-2-1,Desas un pastētes - Pastēte aknu desas,0.0
+SH-6-2-3,Desas un pastētes - Auksti kūpinātās desas,0.0
+SH-6-2-4,Desas un pastētes - Karsti kūpinātās desas,0.0
+SH-6-2-5,Desas un pastētes - Vārītās desas,0.0
+SH-6-5-1,Gaļas maltītes un uzkodas - Galerti gaļa želejā,0.0
+SH-6-5-2,Gaļas maltītes un uzkodas - Gaļas bumbiņas nageti,0.5
+SH-6-5-3,Gaļas maltītes un uzkodas - Lēni pagatavotas gaļas maltītes,0.5
+SH-6-5-4,Gaļas maltītes un uzkodas - Uzkodas,0.0
+SH-6-5-5,Gaļas maltītes un uzkodas - RIMI kulinārija,1.5
+SH-6-7-12,Gatavā kulinārija - Pankūkas,0.8
+SH-6-7-13,Gatavā kulinārija - Pastas un picas,2.0
+SH-6-7-15,Gatavā kulinārija - Piedevas un mērces,1.0
+SH-6-7-16,Gatavā kulinārija - Salāti,1.5
+SH-6-7-18,Gatavā kulinārija - Sviestmaizes,2.0
+SH-6-7-19,Gatavā kulinārija - Uzkodas plates kulinārija,1.2
+SH-6-7-21,Gatavā kulinārija - Gatavas maltītes,1.5
+SH-6-9-14,Zivju un gaļas konservi - Gaļas konservi,0.0
+SH-6-9-22,Zivju un gaļas konservi - Citas konservētas zivis,0.0
+SH-6-9-23,Zivju un gaļas konservi - Konservētas jūras veltes,0.0
+SH-6-9-24,Zivju un gaļas konservi - Konservētas šprotes,0.0
+SH-6-9-25,Zivju un gaļas konservi - Konservēts tuncis,0.0
+SH-7-1-1,Konditoreja - Groziņi,0.5
+SH-7-1-10,Konditoreja - Svaiga mīkla un pamatnes,1.5
+SH-7-1-11,Konditoreja - Tortes,0.5
+SH-7-1-12,Konditoreja - Smalkmaizītes pīrādziņi cepumi,1.5
+SH-7-1-3,Konditoreja - Kēksi un mafini,1.0
+SH-7-1-5,Konditoreja - Kūkas un kūciņas,0.5
+SH-7-1-9,Konditoreja - Ruletes un plātsmaizes,1.0
+SH-7-2-14,Maize - Baltmaize,2.4
+SH-7-2-15,Maize - Svaigi cepta maize,3.0
+SH-7-2-17,Maize - Sēklu un pelēkā maize,6.0
+SH-7-2-19,Maize - Polārmaize lavašs,2.0
+SH-7-2-20,Maize - Porciju maize,3.5
+SH-7-2-21,Maize - Saldskābmaize,4.5
+SH-7-2-23,Maize - Tostermaize,2.2
+SH-7-2-25,Maize - Tumšā maize,8.5
+SH-7-2-27,Maize - Sausmaizītes un uzkodas,4.0
+SH-7-2-28,Maize - Rīvmaize,3.0
