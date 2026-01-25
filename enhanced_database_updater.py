@@ -704,11 +704,16 @@ class EnhancedDatabaseUpdater:
     def add_nutrition_data(self, product_id: int, nutrition_data: Dict) -> bool:
         """Add new nutrition data record"""
         try:
+            # Determine is_fiber_correct based on whether fiber was scraped
+            scraped_fiber = nutrition_data.get('fiber')
+            has_scraped_fiber = scraped_fiber is not None and float(scraped_fiber) > 0
+            is_fiber_correct = has_scraped_fiber
+            
             nutrition_query = """
                 INSERT INTO nutritionfacts (
                     product_id, ingredients_text, energy_kcal, energy_kj, fat_total, fat_saturated,
-                    carbs_total, carbs_sugars, protein, salt, fiber, data_source_date
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    carbs_total, carbs_sugars, protein, salt, fiber, data_source_date, is_fiber_correct
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
                 RETURNING nutrition_id
             """
             
@@ -723,7 +728,8 @@ class EnhancedDatabaseUpdater:
                 nutrition_data.get('carbs_sugars', 0),
                 nutrition_data.get('protein', 0),
                 nutrition_data.get('salt', 0),
-                nutrition_data.get('fiber', 0)
+                nutrition_data.get('fiber', 0),
+                is_fiber_correct
             ), fetch=True)
             
             if result:

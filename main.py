@@ -614,7 +614,8 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                         salt = %s,
                         nutri_score_grade = %s,
                         nutri_score_points = %s,
-                        nutrition_manual_edit = %s
+                        nutrition_manual_edit = %s,
+                        is_fiber_correct = %s
                     WHERE product_id = %s
                 """
                 
@@ -633,6 +634,7 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                         new_grade,
                         new_score,
                         manual_edit,
+                        True if fiber and fiber > 0 else False,  # Mark fiber as correct when manually edited
                         product_id
                     ))
                     db.connection.commit()
@@ -1484,6 +1486,7 @@ def section_fiber_estimation():
     - Uses category defaults from AI analysis of typical fiber content
     - Exception rules override defaults for specific product types (whole grain, dark chocolate, etc.)
     - Products with existing fiber > 0 are skipped
+    - Estimated fiber is marked `is_fiber_correct=FALSE` until manually verified
     """)
     
     db = ProductViewDatabase()
@@ -1631,11 +1634,13 @@ def section_fiber_estimation():
                     
                     try:
                         with db.connection.cursor() as cur:
+                            # Note: is_fiber_correct stays FALSE for estimated fiber
+                            # It only becomes TRUE when manually verified or scraped
                             if new_grade:
                                 cur.execute("""
                                     UPDATE nutritionfacts 
                                     SET fiber = %s, 
-                                        is_fiber_correct = TRUE,
+                                        is_fiber_correct = FALSE,
                                         nutri_score_grade = %s,
                                         nutri_score_points = %s
                                     WHERE product_id = %s
@@ -1645,7 +1650,7 @@ def section_fiber_estimation():
                             else:
                                 cur.execute("""
                                     UPDATE nutritionfacts 
-                                    SET fiber = %s, is_fiber_correct = TRUE
+                                    SET fiber = %s, is_fiber_correct = FALSE
                                     WHERE product_id = %s
                                 """, (new_fiber, result['product_id']))
                             db.connection.commit()

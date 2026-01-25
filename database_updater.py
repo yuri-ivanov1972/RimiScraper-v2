@@ -217,16 +217,24 @@ class DatabaseUpdater:
             salt = float(nutrition_data.get('salt', 0)) if nutrition_data.get('salt') else None
             fiber = float(nutrition_data.get('fiber', 0)) if nutrition_data.get('fiber') else None
             
+            # Determine is_fiber_correct based on actual fiber source
+            # True = scraped from Rimi / USDA / manual entry (reliable)
+            # False = missing/zero fiber (needs estimation or verification)
+            # Note: Estimated fiber still gets is_fiber_correct=False until manually verified
+            scraped_fiber = nutrition_data.get('fiber')
+            has_scraped_fiber = scraped_fiber is not None and float(scraped_fiber) > 0
+            is_fiber_correct = has_scraped_fiber  # True only if fiber was actually scraped
+            
             # Estimate fiber if not scraped (for new products)
-            is_fiber_estimated = False
             if (fiber is None or fiber == 0) and category_code:
                 try:
                     from fiber_estimator import estimate_fiber
-                    product_name = nutrition_data.get('product_name', '')
+                    # Try to get product name - may not be in nutrition_data
+                    product_name = nutrition_data.get('product_name', nutrition_data.get('name', ''))
                     estimated_fiber, source, should_update = estimate_fiber(product_name, category_code, fiber)
                     if should_update and estimated_fiber > 0:
                         fiber = estimated_fiber
-                        is_fiber_estimated = True
+                        # Estimated fiber keeps is_fiber_correct=False until manually verified
                         self.status_callback(f"Estimated fiber: {fiber}g ({source})")
                 except Exception as e:
                     self.status_callback(f"Fiber estimation failed: {e}")
@@ -303,7 +311,7 @@ class DatabaseUpdater:
             self._execute_query(nutrition_query, (
                 product_id, ingredients_text, energy_kcal, energy_kj, fat_total, fat_saturated,
                 carbs_total, carbs_sugars, protein, salt, fiber, nutri_score_grade, nutri_score_points,
-                datetime.now(timezone.utc), True
+                datetime.now(timezone.utc), is_fiber_correct
             ))
             
             # Commit the transaction

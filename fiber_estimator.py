@@ -5,10 +5,12 @@ Estimates fiber content for products based on category defaults and product name
 This is used to improve Nutri-Score accuracy when fiber data is not scraped from Rimi.
 
 Logic:
-1. If product already has fiber > 0 from scraping/USDA, skip (is_fiber_correct = TRUE)
+1. If product already has fiber > 0 from scraping/USDA, skip (is_fiber_correct remains TRUE)
 2. Check if product name matches any exception keywords (overrides category default)
 3. Otherwise use category default fiber value
-4. Mark is_fiber_correct = TRUE for estimated values (means original scraped value was NULL/0 or correct)
+4. IMPORTANT: Estimated fiber keeps is_fiber_correct = FALSE until manually verified
+   - is_fiber_correct = TRUE only for: scraped fiber, USDA data, or manual entry
+   - is_fiber_correct = FALSE for: missing/null fiber, estimated values, unverified data
 """
 
 CATEGORY_FIBER_DEFAULTS = {
