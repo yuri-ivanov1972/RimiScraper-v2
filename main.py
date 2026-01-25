@@ -1573,6 +1573,10 @@ def section_fiber_estimation():
                 product.get('fiber')
             )
             
+            # Skip products with 0 fiber estimate (category default is 0)
+            if new_fiber == 0:
+                continue
+            
             new_grade = None
             if new_fiber > 0 and all([
                 product.get('energy_kj'), 
