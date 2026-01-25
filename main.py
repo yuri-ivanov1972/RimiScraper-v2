@@ -1524,15 +1524,17 @@ def section_fiber_estimation():
     
     st.divider()
     
-    mode = st.radio(
-        "Mode:",
-        ["Preview (Dry Run)", "Apply Fiber Estimates"],
-        horizontal=True
-    )
+    # Initialize session state for fiber estimation
+    if 'fiber_updates_ready' not in st.session_state:
+        st.session_state.fiber_updates_ready = []
     
     limit_preview = st.number_input("Preview limit (products to show)", min_value=10, max_value=500, value=50)
     
-    if st.button("🔍 Run Fiber Estimation", type="primary"):
+    col1, col2 = st.columns(2)
+    run_preview = col1.button("🔍 Preview Fiber Estimates", type="primary")
+    apply_now = col2.button("✅ Apply All Estimates", type="secondary", disabled=len(st.session_state.fiber_updates_ready) == 0)
+    
+    if run_preview:
         with st.spinner("Fetching products with missing fiber..."):
             with db.connection.cursor() as cur:
                 cur.execute("""
@@ -1618,86 +1620,95 @@ def section_fiber_estimation():
             })
         
         updates_needed = [r for r in results if r['new_fiber'] > 0]
+        st.session_state.fiber_updates_ready = updates_needed
         st.write(f"**{len(updates_needed)}** products will get fiber estimates")
         
         import pandas as pd
         display_cols = ['sku', 'name', 'category', 'old_fiber', 'new_fiber', 'match_type', 'before_grade', 'new_grade']
         df = pd.DataFrame(results[:limit_preview])[display_cols]
         st.dataframe(df, use_container_width=True)
+        st.info(f"Click 'Apply All Estimates' button above to apply changes to all {len(updates_needed)} products")
+    
+    # Show stored preview if available (persists across reruns)
+    elif st.session_state.fiber_updates_ready:
+        updates_needed = st.session_state.fiber_updates_ready
+        st.write(f"**{len(updates_needed)}** products ready for fiber estimation")
+        import pandas as pd
+        display_cols = ['sku', 'name', 'category', 'old_fiber', 'new_fiber', 'match_type', 'before_grade', 'new_grade']
+        df = pd.DataFrame(updates_needed[:limit_preview])[display_cols]
+        st.dataframe(df, use_container_width=True)
+    
+    # Handle Apply button
+    if apply_now and st.session_state.fiber_updates_ready:
+        updates_needed = st.session_state.fiber_updates_ready
+        st.warning(f"Applying fiber estimates to {len(updates_needed)} products...")
         
-        if mode == "Apply Fiber Estimates" and updates_needed:
-            st.divider()
-            st.warning(f"This will update {len(updates_needed)} products and recalculate their Nutri-Scores")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        calculator = NutriscoreCalculator()
+        updated_count = 0
+        grade_changed_count = 0
+        
+        for i, result in enumerate(updates_needed):
+            status_text.text(f"Processing {i+1}/{len(updates_needed)}: {result['name'][:40]}...")
             
-            if st.button("✅ Confirm & Apply Changes", type="secondary"):
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                calculator = NutriscoreCalculator()
-                updated_count = 0
-                grade_changed_count = 0
-                
-                for i, result in enumerate(updates_needed):
-                    status_text.text(f"Processing {i+1}/{len(updates_needed)}: {result['name'][:40]}...")
-                    
-                    new_fiber = result['new_fiber']
-                    
-                    new_grade = None
-                    new_score = None
-                    if all([result.get('energy_kj'), result.get('sugars') is not None, 
-                            result.get('saturated_fat') is not None, result.get('salt') is not None,
-                            result.get('protein') is not None]):
-                        try:
-                            calc_result = calculator.calculate_single_product(
-                                energy_kj=float(result['energy_kj']),
-                                sugars=float(result['sugars']),
-                                saturated_fat=float(result['saturated_fat']),
-                                salt=float(result['salt']),
-                                protein=float(result['protein']),
-                                fiber=new_fiber,
-                                category_code=result['category']
-                            )
-                            if calc_result.get('success'):
-                                new_grade = calc_result['grade']
-                                new_score = calc_result['score']
-                        except Exception:
-                            pass
-                    
-                    try:
-                        with db.connection.cursor() as cur:
-                            # Note: is_fiber_correct stays FALSE for estimated fiber
-                            # It only becomes TRUE when manually verified or scraped
-                            if new_grade:
-                                cur.execute("""
-                                    UPDATE nutritionfacts 
-                                    SET fiber = %s, 
-                                        is_fiber_correct = FALSE,
-                                        nutri_score_grade = %s,
-                                        nutri_score_points = %s
-                                    WHERE product_id = %s
-                                """, (new_fiber, new_grade, new_score, result['product_id']))
-                                if result['before_grade'] != new_grade:
-                                    grade_changed_count += 1
-                            else:
-                                cur.execute("""
-                                    UPDATE nutritionfacts 
-                                    SET fiber = %s, is_fiber_correct = FALSE
-                                    WHERE product_id = %s
-                                """, (new_fiber, result['product_id']))
-                            db.connection.commit()
-                            updated_count += 1
-                    except Exception as e:
-                        st.error(f"Error updating {result['sku']}: {e}")
-                    
-                    progress_bar.progress((i + 1) / len(updates_needed))
-                
-                status_text.text("Complete!")
-                st.success(f"""
-                **Results:**
-                - ✅ Updated: {updated_count} products
-                - 🔄 Grade changed: {grade_changed_count} products
-                """)
-                st.rerun()
+            new_fiber = result['new_fiber']
+            
+            new_grade = None
+            new_score = None
+            if all([result.get('energy_kj'), result.get('sugars') is not None, 
+                    result.get('saturated_fat') is not None, result.get('salt') is not None,
+                    result.get('protein') is not None]):
+                try:
+                    calc_result = calculator.calculate_single_product(
+                        energy_kj=float(result['energy_kj']),
+                        sugars=float(result['sugars']),
+                        saturated_fat=float(result['saturated_fat']),
+                        salt=float(result['salt']),
+                        protein=float(result['protein']),
+                        fiber=new_fiber,
+                        category_code=result['category']
+                    )
+                    if calc_result.get('success'):
+                        new_grade = calc_result['grade']
+                        new_score = calc_result['score']
+                except Exception:
+                    pass
+            
+            try:
+                with db.connection.cursor() as cur:
+                    if new_grade:
+                        cur.execute("""
+                            UPDATE nutritionfacts 
+                            SET fiber = %s, 
+                                is_fiber_correct = FALSE,
+                                nutri_score_grade = %s,
+                                nutri_score_points = %s
+                            WHERE product_id = %s
+                        """, (new_fiber, new_grade, new_score, result['product_id']))
+                        if result['before_grade'] != new_grade:
+                            grade_changed_count += 1
+                    else:
+                        cur.execute("""
+                            UPDATE nutritionfacts 
+                            SET fiber = %s, is_fiber_correct = FALSE
+                            WHERE product_id = %s
+                        """, (new_fiber, result['product_id']))
+                    db.connection.commit()
+                    updated_count += 1
+            except Exception as e:
+                st.error(f"Error updating {result['sku']}: {e}")
+            
+            progress_bar.progress((i + 1) / len(updates_needed))
+        
+        status_text.text("Complete!")
+        st.session_state.fiber_updates_ready = []  # Clear after applying
+        st.success(f"""
+        **Results:**
+        - Updated: {updated_count} products
+        - Grade changed: {grade_changed_count} products
+        """)
 
 
 def section_ingredient_import():
