@@ -1159,7 +1159,17 @@ def section_change_report():
 
 def section_nutriscore_recalculation():
     """Section: Nutri-Score Recalculation"""
-    st.header("🔄 Nutri-Score Recalculation")
+    st.header("🔄 Nutri-Score Tools")
+    
+    sub_tab = st.radio(
+        "Tool:",
+        ["🔄 Recalculate Nutri-Score", "🌾 Fiber Estimation"],
+        horizontal=True
+    )
+    
+    if sub_tab == "🌾 Fiber Estimation":
+        section_fiber_estimation()
+        return
     
     st.info("""
     Recalculate Nutri-Score for products using the updated category mappings.
@@ -1461,6 +1471,197 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
             
     except Exception as e:
         return {'success': False, 'message': str(e)}
+
+
+def section_fiber_estimation():
+    """Section: Fiber Estimation for Nutri-Score Improvement"""
+    from fiber_estimator import estimate_fiber, CATEGORY_FIBER_DEFAULTS, EXCEPTION_RULES
+    from nutriscore_calculator import NutriscoreCalculator
+    
+    st.header("🌾 Fiber Estimation")
+    st.info("""
+    Estimate fiber content for products missing fiber data to improve Nutri-Score accuracy.
+    - Uses category defaults from AI analysis of typical fiber content
+    - Exception rules override defaults for specific product types (whole grain, dark chocolate, etc.)
+    - Products with existing fiber > 0 are skipped
+    """)
+    
+    db = ProductViewDatabase()
+    db._ensure_connection()
+    
+    with db.connection.cursor() as cur:
+        cur.execute("""
+            SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE nf.fiber IS NULL OR nf.fiber = 0) as missing_fiber,
+                COUNT(*) FILTER (WHERE nf.fiber > 0) as has_fiber,
+                COUNT(*) FILTER (WHERE nf.is_fiber_correct = TRUE) as marked_correct
+            FROM nutritionfacts nf
+        """)
+        stats = dict(cur.fetchone())
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Products", stats['total'])
+    with col2:
+        st.metric("Missing Fiber", stats['missing_fiber'])
+    with col3:
+        st.metric("Has Fiber", stats['has_fiber'])
+    with col4:
+        st.metric("Marked Correct", stats['marked_correct'])
+    
+    with st.expander("📋 Category Fiber Defaults", expanded=False):
+        defaults_data = [{"Category": k, "Fiber (g/100g)": v} for k, v in sorted(CATEGORY_FIBER_DEFAULTS.items())]
+        st.dataframe(defaults_data, use_container_width=True, height=300)
+    
+    with st.expander("⚠️ Exception Rules", expanded=False):
+        for rule in EXCEPTION_RULES:
+            st.markdown(f"**{rule['category_prefix']}**: Keywords `{', '.join(rule['keywords'])}` → {rule['fiber']}g")
+            st.caption(f"_{rule['reason']}_")
+    
+    st.divider()
+    
+    mode = st.radio(
+        "Mode:",
+        ["Preview (Dry Run)", "Apply Fiber Estimates"],
+        horizontal=True
+    )
+    
+    limit_preview = st.number_input("Preview limit (products to show)", min_value=10, max_value=500, value=50)
+    
+    if st.button("🔍 Run Fiber Estimation", type="primary"):
+        with st.spinner("Fetching products with missing fiber..."):
+            with db.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT 
+                        p.product_id,
+                        p.sku,
+                        p.name,
+                        nc.rimi_category_code as category_code,
+                        nf.fiber,
+                        nf.energy_kj,
+                        nf.carbs_sugars,
+                        nf.fat_saturated,
+                        nf.salt,
+                        nf.protein,
+                        nf.nutri_score_grade as current_grade,
+                        nf.nutri_score_points as current_score
+                    FROM products p
+                    JOIN nutritionfacts nf ON p.product_id = nf.product_id
+                    LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+                    WHERE (nf.fiber IS NULL OR nf.fiber = 0)
+                      AND nf.energy_kj IS NOT NULL
+                    ORDER BY p.name
+                """)
+                products = [dict(row) for row in cur.fetchall()]
+        
+        if not products:
+            st.success("All products with nutrition data already have fiber values!")
+            return
+        
+        st.write(f"Found **{len(products)}** products with missing fiber")
+        
+        results = []
+        for product in products:
+            new_fiber, source, should_update = estimate_fiber(
+                product.get('name', ''),
+                product.get('category_code', ''),
+                product.get('fiber')
+            )
+            results.append({
+                'product_id': product['product_id'],
+                'sku': product['sku'],
+                'name': product['name'][:50],
+                'category': product.get('category_code', 'N/A'),
+                'old_fiber': product.get('fiber') or 0,
+                'new_fiber': new_fiber,
+                'source': source,
+                'current_grade': product.get('current_grade'),
+                'energy_kj': product.get('energy_kj'),
+                'sugars': product.get('carbs_sugars'),
+                'saturated_fat': product.get('fat_saturated'),
+                'salt': product.get('salt'),
+                'protein': product.get('protein'),
+            })
+        
+        updates_needed = [r for r in results if r['new_fiber'] > 0]
+        st.write(f"**{len(updates_needed)}** products will get fiber estimates")
+        
+        import pandas as pd
+        df = pd.DataFrame(results[:limit_preview])
+        st.dataframe(df, use_container_width=True)
+        
+        if mode == "Apply Fiber Estimates" and updates_needed:
+            st.divider()
+            st.warning(f"This will update {len(updates_needed)} products and recalculate their Nutri-Scores")
+            
+            if st.button("✅ Confirm & Apply Changes", type="secondary"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                calculator = NutriscoreCalculator()
+                updated_count = 0
+                grade_changed_count = 0
+                
+                for i, result in enumerate(updates_needed):
+                    status_text.text(f"Processing {i+1}/{len(updates_needed)}: {result['name'][:40]}...")
+                    
+                    new_fiber = result['new_fiber']
+                    
+                    new_grade = None
+                    new_score = None
+                    if all([result.get('energy_kj'), result.get('sugars') is not None, 
+                            result.get('saturated_fat') is not None, result.get('salt') is not None,
+                            result.get('protein') is not None]):
+                        try:
+                            calc_result = calculator.calculate_single_product(
+                                energy_kj=float(result['energy_kj']),
+                                sugars=float(result['sugars']),
+                                saturated_fat=float(result['saturated_fat']),
+                                salt=float(result['salt']),
+                                protein=float(result['protein']),
+                                fiber=new_fiber,
+                                category_code=result['category']
+                            )
+                            if calc_result.get('success'):
+                                new_grade = calc_result['grade']
+                                new_score = calc_result['score']
+                        except Exception:
+                            pass
+                    
+                    try:
+                        with db.connection.cursor() as cur:
+                            if new_grade:
+                                cur.execute("""
+                                    UPDATE nutritionfacts 
+                                    SET fiber = %s, 
+                                        is_fiber_correct = TRUE,
+                                        nutri_score_grade = %s,
+                                        nutri_score_points = %s
+                                    WHERE product_id = %s
+                                """, (new_fiber, new_grade, new_score, result['product_id']))
+                                if result['current_grade'] != new_grade:
+                                    grade_changed_count += 1
+                            else:
+                                cur.execute("""
+                                    UPDATE nutritionfacts 
+                                    SET fiber = %s, is_fiber_correct = TRUE
+                                    WHERE product_id = %s
+                                """, (new_fiber, result['product_id']))
+                            db.connection.commit()
+                            updated_count += 1
+                    except Exception as e:
+                        st.error(f"Error updating {result['sku']}: {e}")
+                    
+                    progress_bar.progress((i + 1) / len(updates_needed))
+                
+                status_text.text("Complete!")
+                st.success(f"""
+                **Results:**
+                - ✅ Updated: {updated_count} products
+                - 🔄 Grade changed: {grade_changed_count} products
+                """)
+                st.rerun()
 
 
 def section_ingredient_import():

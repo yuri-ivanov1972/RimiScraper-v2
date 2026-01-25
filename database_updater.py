@@ -217,6 +217,20 @@ class DatabaseUpdater:
             salt = float(nutrition_data.get('salt', 0)) if nutrition_data.get('salt') else None
             fiber = float(nutrition_data.get('fiber', 0)) if nutrition_data.get('fiber') else None
             
+            # Estimate fiber if not scraped (for new products)
+            is_fiber_estimated = False
+            if (fiber is None or fiber == 0) and category_code:
+                try:
+                    from fiber_estimator import estimate_fiber
+                    product_name = nutrition_data.get('product_name', '')
+                    estimated_fiber, source, should_update = estimate_fiber(product_name, category_code, fiber)
+                    if should_update and estimated_fiber > 0:
+                        fiber = estimated_fiber
+                        is_fiber_estimated = True
+                        self.status_callback(f"Estimated fiber: {fiber}g ({source})")
+                except Exception as e:
+                    self.status_callback(f"Fiber estimation failed: {e}")
+            
             # Check if product already has nutri-score
             existing_nutri_query = """
                 SELECT nutri_score_grade FROM nutritionfacts WHERE product_id = %s
@@ -266,8 +280,8 @@ class DatabaseUpdater:
                 INSERT INTO nutritionfacts 
                 (product_id, ingredients_text, energy_kcal, energy_kj, fat_total, fat_saturated,
                  carbs_total, carbs_sugars, protein, salt, fiber, nutri_score_grade, nutri_score_points,
-                 data_source_date)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 data_source_date, is_fiber_correct)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (product_id) DO UPDATE SET
                     ingredients_text = EXCLUDED.ingredients_text,
                     energy_kcal = EXCLUDED.energy_kcal,
@@ -281,14 +295,15 @@ class DatabaseUpdater:
                     fiber = EXCLUDED.fiber,
                     nutri_score_grade = EXCLUDED.nutri_score_grade,
                     nutri_score_points = EXCLUDED.nutri_score_points,
-                    data_source_date = EXCLUDED.data_source_date
+                    data_source_date = EXCLUDED.data_source_date,
+                    is_fiber_correct = EXCLUDED.is_fiber_correct
                 WHERE NOT COALESCE(nutritionfacts.nutrition_manual_edit, FALSE)
             """
             
             self._execute_query(nutrition_query, (
                 product_id, ingredients_text, energy_kcal, energy_kj, fat_total, fat_saturated,
                 carbs_total, carbs_sugars, protein, salt, fiber, nutri_score_grade, nutri_score_points,
-                datetime.now(timezone.utc)
+                datetime.now(timezone.utc), True
             ))
             
             # Commit the transaction
