@@ -1532,7 +1532,7 @@ def section_fiber_estimation():
     
     col1, col2 = st.columns(2)
     run_preview = col1.button("🔍 Preview Fiber Estimates", type="primary")
-    apply_now = col2.button("✅ Apply All Estimates", type="secondary", disabled=len(st.session_state.fiber_updates_ready) == 0)
+    apply_now = col2.button("✅ Apply All Estimates", type="secondary")
     
     if run_preview:
         with st.spinner("Fetching products with missing fiber..."):
@@ -1639,7 +1639,11 @@ def section_fiber_estimation():
         st.dataframe(df, use_container_width=True)
     
     # Handle Apply button
-    if apply_now and st.session_state.fiber_updates_ready:
+    if apply_now:
+        if not st.session_state.fiber_updates_ready:
+            st.warning("Please run Preview first to prepare the list of products to update")
+            return
+        
         updates_needed = st.session_state.fiber_updates_ready
         st.warning(f"Applying fiber estimates to {len(updates_needed)} products...")
         
