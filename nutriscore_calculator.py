@@ -372,10 +372,6 @@ class NutriscoreCalculator:
         if category_code in self.fat_oil_nut_categories:
             return 'fats_oils_nuts'
         
-        for prefix in ['SH-4-3']:
-            if category_code.startswith(prefix):
-                return 'fats_oils_nuts'
-        
         if category_code in self.cheese_categories:
             return 'cheese'
         
