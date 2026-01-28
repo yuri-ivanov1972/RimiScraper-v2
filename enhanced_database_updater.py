@@ -343,16 +343,27 @@ class EnhancedDatabaseUpdater:
             return False
     
     def force_recalculate_nutriscore(self, product_id: int) -> bool:
-        """Force recalculate nutri-score for a product"""
+        """Force recalculate nutri-score for a product using 2024 algorithm with category detection"""
         try:
-            # Get nutrition data
+            # Get nutrition data WITH ingredients_text and energy_kj
             nutrition_query = """
-                SELECT energy_kcal, fat_total, fat_saturated, carbs_total, carbs_sugars, 
-                       protein, salt, fiber
+                SELECT energy_kcal, energy_kj, fat_total, fat_saturated, carbs_total, carbs_sugars, 
+                       protein, salt, fiber, ingredients_text
                 FROM nutritionfacts 
                 WHERE product_id = %s
             """
             nutrition_result = self._execute_query(nutrition_query, (product_id,), fetch=True)
+            
+            # Get product name and category code for proper Nutri-Score category detection
+            product_query = """
+                SELECT p.name, nc.rimi_category_code 
+                FROM products p
+                LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+                WHERE p.product_id = %s
+            """
+            product_result = self._execute_query(product_query, (product_id,), fetch=True)
+            product_name = product_result[0].get('name') if product_result else None
+            category_code = product_result[0].get('rimi_category_code') if product_result else None
             
             if not nutrition_result:
                 self.status_callback("No nutrition data found for nutri-score calculation")
@@ -418,75 +429,75 @@ class EnhancedDatabaseUpdater:
                 self.status_callback("=" * 50)
                 return False
             
-            # Calculate nutri-score using the calculator
+            # Calculate nutri-score using the 2024 calculator with category and sweetener detection
             self.status_callback("✓ All required fields present with non-zero values - proceeding with calculation")
             try:
-                from nutriscore_calculator import calculate_nutriscore
-                
-                # Convert salt to sodium (mg/100g) for nutri-score calculation
-                sodium_mg = nutrition.get('salt', 0) * 400 if nutrition.get('salt') else 0
+                from nutriscore_calculator import NutriscoreCalculator
                 
                 # Convert kcal to kj if needed (1 kcal = 4.184 kj)
                 energy_kj = nutrition.get('energy_kj', 0) or (nutrition.get('energy_kcal', 0) * 4.184 if nutrition.get('energy_kcal') else 0)
+                ingredients_text = nutrition.get('ingredients_text', '') or ''
                 
                 # Show input values for calculation
-                self.status_callback("Input values for nutri-score calculation:")
-                self.status_callback(f"  - energy_kj: {energy_kj} (converted from kcal if needed)")
+                self.status_callback("Input values for nutri-score calculation (2024 algorithm):")
+                self.status_callback(f"  - energy_kj: {energy_kj}")
                 self.status_callback(f"  - sugars: {nutrition.get('carbs_sugars', 0) or 0}")
                 self.status_callback(f"  - saturated_fat: {nutrition.get('fat_saturated', 0) or 0}")
-                self.status_callback(f"  - sodium: {sodium_mg} (from salt: {nutrition.get('salt', 0)})")
+                self.status_callback(f"  - salt: {nutrition.get('salt', 0) or 0}")
                 self.status_callback(f"  - protein: {nutrition.get('protein', 0) or 0}")
-                self.status_callback(f"  - fiber: {int(nutrition.get('fiber', 0))}")
+                self.status_callback(f"  - fiber: {nutrition.get('fiber', 0) or 0}")
+                self.status_callback(f"  - total_fat: {nutrition.get('fat_total', 0) or 0}")
+                self.status_callback(f"  - category_code: {category_code}")
+                self.status_callback(f"  - product_name: {product_name}")
+                self.status_callback(f"  - ingredients_text: {ingredients_text[:100]}..." if len(ingredients_text) > 100 else f"  - ingredients_text: {ingredients_text}")
                 
-                nutri_result = calculate_nutriscore(
+                calculator = NutriscoreCalculator()
+                nutri_result = calculator.calculate_single_product(
                     energy_kj=energy_kj,
                     sugars=nutrition.get('carbs_sugars', 0) or 0,
                     saturated_fat=nutrition.get('fat_saturated', 0) or 0,
-                    sodium=sodium_mg,
+                    salt=nutrition.get('salt', 0) or 0,
                     protein=nutrition.get('protein', 0) or 0,
-                    fiber=int(nutrition.get('fiber', 0))
+                    fiber=nutrition.get('fiber', 0) or 0,
+                    total_fat=nutrition.get('fat_total', 0) or 0,
+                    category_code=category_code,
+                    product_name=product_name,
+                    ingredients_text=ingredients_text
                 )
                 
-                # Handle different return formats from nutri-score calculator
-                if nutri_result:
-                    # Calculator returns tuple: (points, grade, details)
-                    if isinstance(nutri_result, tuple) and len(nutri_result) >= 2:
-                        points, grade = nutri_result[0], nutri_result[1]
-                        self.status_callback(f"Nutri-score calculated: {grade} ({points} points)")
-                        
-                        # Update nutri-score in database
-                        update_query = """
-                            UPDATE nutritionfacts 
-                            SET nutri_score_grade = %s, nutri_score_points = %s, data_source_date = CURRENT_TIMESTAMP
-                            WHERE product_id = %s
-                        """
-                        self._execute_query(update_query, (grade, points, product_id))
-                        self.status_callback(f"✓ NUTRI-SCORE CALCULATION SUCCESS: {grade} ({points} points)")
-                        self.status_callback("=" * 50)
-                        return True
+                # Handle result from NutriscoreCalculator
+                if nutri_result and nutri_result.get('success'):
+                    grade = nutri_result['grade']
+                    points = nutri_result['score']
                     
-                    # Alternative: dictionary format
-                    elif isinstance(nutri_result, dict) and 'grade' in nutri_result and 'points' in nutri_result:
-                        grade, points = nutri_result['grade'], nutri_result['points']
-                        
-                        # Update nutri-score in database
-                        update_query = """
-                            UPDATE nutritionfacts 
-                            SET nutri_score_grade = %s, nutri_score_points = %s, data_source_date = CURRENT_TIMESTAMP
-                            WHERE product_id = %s
-                        """
-                        self._execute_query(update_query, (grade, points, product_id))
-                        self.status_callback(f"✓ NUTRI-SCORE CALCULATION SUCCESS: {grade} ({points} points)")
-                        self.status_callback("=" * 50)
-                        return True
+                    # Log classification details
+                    classification = nutri_result.get('classification', {})
+                    self.status_callback(f"  - Detected category: {classification.get('nutriscore_category', 'general')}")
+                    self.status_callback(f"  - Is beverage: {classification.get('is_beverage', False)}")
+                    self.status_callback(f"  - Has sweeteners: {classification.get('has_sweeteners', False)}")
+                    self.status_callback(f"  - Protein status: {nutri_result.get('protein_status', 'included')}")
                     
-                    else:
-                        self.status_callback("✗ NUTRI-SCORE CALCULATION FAILED: Unexpected result format")
-                        self.status_callback(f"Calculator returned: {nutri_result}")
-                        self.status_callback(f"Result type: {type(nutri_result)}")
-                        self.status_callback("=" * 50)
+                    # Log component breakdown
+                    components = nutri_result.get('components', {})
+                    if components:
+                        self.status_callback(f"  - N points breakdown: energy={components.get('energy_points',0)}, sugar={components.get('sugar_points',0)}, satfat={components.get('satfat_points',0)}, salt={components.get('salt_points',0)}, sweetener={components.get('sweetener_points',0)}")
+                        self.status_callback(f"  - P points breakdown: protein={components.get('protein_points',0)}, fiber={components.get('fiber_points',0)}, fvl={components.get('fvl_points',0)}")
+                    
+                    self.status_callback(f"Nutri-score calculated: {grade} ({points} points)")
+                    
+                    # Update nutri-score in database
+                    update_query = """
+                        UPDATE nutritionfacts 
+                        SET nutri_score_grade = %s, nutri_score_points = %s, data_source_date = CURRENT_TIMESTAMP
+                        WHERE product_id = %s
+                    """
+                    self._execute_query(update_query, (grade, points, product_id))
+                    self.status_callback(f"✓ NUTRI-SCORE CALCULATION SUCCESS: {grade} ({points} points)")
+                    self.status_callback("=" * 50)
+                    return True
                 else:
-                    self.status_callback("✗ NUTRI-SCORE CALCULATION FAILED: No result from calculator")
+                    error_msg = nutri_result.get('error', 'Unknown error') if nutri_result else 'No result'
+                    self.status_callback(f"✗ NUTRI-SCORE CALCULATION FAILED: {error_msg}")
                     self.status_callback("=" * 50)
                 
             except ImportError as e:
