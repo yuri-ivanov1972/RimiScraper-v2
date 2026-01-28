@@ -206,7 +206,7 @@ def calculate_nutriscore_2024(
         if total_fat_g and total_fat_g > 0:
             ratio = (sat_fat_g / total_fat_g) * 100
         else:
-            ratio = 100 if sat_fat_g > 0 else 0
+            ratio = 0
         p_satfat = get_points(ratio, [10, 16, 22, 28, 34, 40, 46, 52, 58, 64])
         
         p_sugar = get_points(sugars_g, t_sugar_gen)
@@ -314,7 +314,7 @@ class NutriscoreCalculator:
         self.full_fvn_categories = FULL_FVN_CATEGORIES
         self.half_fvn_categories = HALF_FVN_CATEGORIES
     
-    def _detect_sweeteners(self, product_name: str, ingredients_text: Optional[str] = None) -> bool:
+    def _detect_sweeteners(self, product_name: Optional[str], ingredients_text: Optional[str] = None) -> bool:
         """Detect if product likely contains artificial sweeteners based on name/ingredients."""
         text_to_check = (product_name or '').lower()
         if ingredients_text:
@@ -335,6 +335,19 @@ class NutriscoreCalculator:
             return 'general'
         
         if category_code.startswith('SH-5'):
+            return 'beverage'
+        
+        beverage_dairy_categories = {
+            'SH-11-8-1',   # Pilnpiens (whole milk)
+            'SH-11-8-2',   # Other milk
+            'SH-11-8-22',  # Pasterizēts piens (pasteurized milk)
+            'SH-11-8-23',  # Piens ar piedevām (milk with additives)
+            'SH-11-8-24',  # UHT piens (UHT milk)
+            'SH-11-3-8',   # Kefīrs un kefīra dzērieni (kefir drinks)
+            'SH-11-3-9',   # Other fermented drinks
+            'SH-4-14-93',  # Kokosa piens (coconut milk) - plant drink
+        }
+        if category_code in beverage_dairy_categories:
             return 'beverage'
         
         if category_code in self.fat_oil_nut_categories:
@@ -493,6 +506,83 @@ class NutriscoreCalculator:
 def convert_salt_to_sodium(salt: float) -> float:
     """Convert salt (g) to sodium (mg). Legacy function for backwards compatibility."""
     return salt * 400
+
+
+def calculate_nutriscore(
+    energy_kj: float,
+    sugars: float,
+    saturated_fat: float,
+    sodium: float,
+    protein: float,
+    fiber: float = 0,
+    fruits_veg_nuts: float = 0,
+    is_beverage: bool = False,
+    is_fat: bool = False,
+    is_cheese: bool = False
+) -> Tuple[int, str, Dict[str, int]]:
+    """
+    Backward-compatible wrapper for legacy code.
+    
+    DEPRECATED: Use NutriscoreCalculator.calculate_single_product() instead.
+    
+    This function maintains the old interface (sodium in mg, returns tuple)
+    while using the new 2024 algorithm internally.
+    
+    Args:
+        energy_kj: Energy in kJ/100g
+        sugars: Sugars in g/100g
+        saturated_fat: Saturated fat in g/100g
+        sodium: Sodium in mg/100g (will be converted back to salt)
+        protein: Protein in g/100g
+        fiber: Fiber in g/100g
+        fruits_veg_nuts: % fruits/vegetables/nuts
+        is_beverage: True if beverage
+        is_fat: True if fat/oil
+        is_cheese: True if cheese
+    
+    Returns:
+        Tuple of (numeric_score, letter_grade, component_scores)
+    """
+    salt_g = sodium / 400 if sodium else 0
+    
+    if is_beverage:
+        category = 'beverage'
+    elif is_fat:
+        category = 'fats_oils_nuts'
+    elif is_cheese:
+        category = 'cheese'
+    else:
+        category = 'general'
+    
+    result = calculate_nutriscore_2024(
+        category=category,
+        energy_kj=energy_kj or 0,
+        sugars_g=sugars or 0,
+        sat_fat_g=saturated_fat or 0,
+        salt_g=salt_g,
+        protein_g=protein or 0,
+        fiber_g=fiber or 0,
+        fvl_pct=fruits_veg_nuts or 0,
+        total_fat_g=None,
+        has_sweeteners=False
+    )
+    
+    components = {
+        'negative_points': result['n_points'],
+        'positive_points': result['p_points'],
+        'energy_points': result['components']['energy_points'],
+        'sugars_points': result['components']['sugar_points'],
+        'saturated_fat_points': result['components']['satfat_points'],
+        'sodium_points': result['components']['salt_points'],
+        'protein_points': result['components']['protein_points'],
+        'fiber_points': result['components']['fiber_points'],
+        'fvn_points': result['components']['fvl_points']
+    }
+    
+    return result['score'], result['grade'], components
+
+
+FAT_CATEGORIES = FAT_OIL_NUT_CATEGORIES
 
 
 if __name__ == '__main__':
