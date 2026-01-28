@@ -1,0 +1,63 @@
+Let me investigate the Coca-Cola sweetener detection by looking at the code:
+
+Here's the complete analysis for Coca-Cola sweetener detection:
+
+1. Raw Ingredients String for Coca-Cola
+From the database, regular Coca-Cola's ingredients_text is:
+
+ūdens, cukurs, oglekļa dioksīds, krāsviela E 150d, skābe: fosforskābe, dabīgi aromatizētāji, t.sk. kofeīns.
+2. What Sweetener Terms Are Detected?
+None. Regular Coca-Cola uses real sugar (cukurs), NOT artificial sweeteners.
+
+The sweetener list checks for these terms:
+
+LATVIAN_SWEETENER_INDICATORS = [
+    'saldināšanas līdzeklis', 'saldinātājs', 'saldinātāji',
+    'aspartāms', 'aspartam', 'acesulfāms', 'acesulfāms k',
+    'sukraloze', 'sukraloz', 'sucralose', 'saharīns', ...
+    'zero', 'light', 'diet', 'bez cukura', 'sugar free',
+    'e950', 'e951', 'e952', ... 'e969',  # Sweetener E-numbers
+]
+Coca-Cola contains E 150d (caramel color), which is NOT a sweetener - sweeteners are E950-E969.
+
+3. Exact Sweetener Detection Code
+def detect_sweeteners(product_name: Optional[str], ingredients_text: Optional[str] = None) -> bool:
+    text_to_check = (product_name or '').lower()
+    if ingredients_text:
+        text_to_check += ' ' + ingredients_text.lower()
+    
+    return any(indicator in text_to_check for indicator in LATVIAN_SWEETENER_INDICATORS)
+4. Expected Result for Regular Coca-Cola
+classification['is_beverage'] = True   # Category 190 is beverages
+classification['has_sweeteners'] = False  # No E950-E969 or sweetener terms
+components['sweetener_points'] = 0     # No +4 penalty (correctly!)
+This is CORRECT behavior - regular Coca-Cola with real sugar should get Grade E due to high sugar content, but without the +4 sweetener penalty. The penalty only applies to diet/zero drinks with artificial sweeteners like aspartam, sukraloze, or E950-E969.
+
+Would you like me to verify by checking a Coca-Cola Zero product to confirm it DOES get the sweetener penalty?
+
+yes, please
+
+Here's the comparison:
+
+Coca-Cola Zero Ingredients
+Ūdens, oglekļa dioksīds, krāsviela E 150d, skābe: fosforskābe, 
+saldinātāji: nātrija ciklamāts, acesulfāms k, aspartāms, 
+dabīgie aromatizētāji, t.sk. kofeīns, skābuma regulētājs: nātrija citrāti.
+Sweetener Terms Detected ✅
+Term in Ingredients	Matches in LATVIAN_SWEETENER_INDICATORS
+acesulfāms k	✅ acesulfāms, acesulfāms k
+aspartāms	✅ aspartāms
+zero (in product name)	✅ zero
+3 matches found - sweetener detection returns True
+
+Expected Result for Coca-Cola Zero
+classification['is_beverage'] = True     # Category 190 = beverages
+classification['has_sweeteners'] = True  # Contains aspartāms, acesulfāms
+components['sweetener_points'] = 4       # +4 penalty applied!
+Summary
+Product	Sugar	Has Sweeteners	Sweetener Points	Grade
+Regular Coca-Cola	10.6g	❌ No	0	E (high sugar)
+Coca-Cola Zero	0g	✅ Yes	+4	C/D (sweetener penalty)
+The detection is working correctly! Regular Coca-Cola gets E for high sugar content. Coca-Cola Zero has 0 sugar but gets penalized +4 points for artificial sweeteners, pushing it to C/D instead of A/B.
+
+Interestingly, the grades vary (C, D, E) for different Zero SKUs - this might be due to inconsistent data or recalculation needed. Would you like me to investigate why some Zero products show Grade E?
