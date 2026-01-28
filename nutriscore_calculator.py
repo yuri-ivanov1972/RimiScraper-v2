@@ -118,6 +118,17 @@ HALF_FVN_CATEGORIES = {
     'SH-4-12-85',  # Sauces - Tomato sauces and pastes
 }
 
+BEVERAGE_DAIRY_CATEGORIES = {
+    'SH-11-8-1',   # Pilnpiens (whole milk)
+    'SH-11-8-2',   # Other milk
+    'SH-11-8-22',  # Pasterizēts piens (pasteurized milk)
+    'SH-11-8-23',  # Piens ar piedevām (milk with additives)
+    'SH-11-8-24',  # UHT piens (UHT milk)
+    'SH-11-3-8',   # Kefīrs un kefīra dzērieni (kefir drinks)
+    'SH-11-3-9',   # Other fermented drinks
+    'SH-4-14-93',  # Kokosa piens (coconut milk) - plant drink
+}
+
 LATVIAN_SWEETENER_INDICATORS = [
     'saldināšanas līdzeklis', 'saldinātājs', 'saldinātāji',
     'aspartāms', 'aspartam',
@@ -355,17 +366,7 @@ class NutriscoreCalculator:
         if category_code.startswith('SH-5'):
             return 'beverage'
         
-        beverage_dairy_categories = {
-            'SH-11-8-1',   # Pilnpiens (whole milk)
-            'SH-11-8-2',   # Other milk
-            'SH-11-8-22',  # Pasterizēts piens (pasteurized milk)
-            'SH-11-8-23',  # Piens ar piedevām (milk with additives)
-            'SH-11-8-24',  # UHT piens (UHT milk)
-            'SH-11-3-8',   # Kefīrs un kefīra dzērieni (kefir drinks)
-            'SH-11-3-9',   # Other fermented drinks
-            'SH-4-14-93',  # Kokosa piens (coconut milk) - plant drink
-        }
-        if category_code in beverage_dairy_categories:
+        if category_code in BEVERAGE_DAIRY_CATEGORIES:
             return 'beverage'
         
         if category_code in self.fat_oil_nut_categories:
@@ -380,10 +381,6 @@ class NutriscoreCalculator:
         
         if category_code in self.red_meat_categories:
             return 'red_meat'
-        
-        for prefix in ['SH-6-7', 'SH-6-14']:
-            if category_code.startswith(prefix):
-                return 'red_meat'
         
         return 'general'
     
