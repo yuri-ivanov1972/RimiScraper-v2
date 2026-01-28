@@ -118,7 +118,34 @@ HALF_FVN_CATEGORIES = {
     'SH-4-12-85',  # Sauces - Tomato sauces and pastes
 }
 
-BEVERAGE_DAIRY_CATEGORIES = {
+BEVERAGE_CATEGORIES = {
+    'SH-5-1',      # Dzērieni - Bezalkoholiskais alus, sidri un vīni
+    'SH-5-1-1',    # Dzērieni - Bezalkoholiskais alus
+    'SH-5-1-2',    # Dzērieni - Bezalkoholiskais sidrs
+    'SH-5-1-3',    # Dzērieni - Bezalkoholiskais vīns
+    'SH-5-2',      # Dzērieni - Dzirkstošie bezalkoholiskie dzērieni
+    'SH-5-3',      # Dzērieni - Enerģijas dzērieni
+    'SH-5-4-5',    # Dzērieni - Limonādes - Gāzētas limonādes
+    'SH-5-4-6',    # Dzērieni - Limonādes - Kvass
+    'SH-5-4-7',    # Dzērieni - Limonādes - Ledus tējas
+    'SH-5-4-8',    # Dzērieni - Limonādes - Negāzētas limonādes
+    'SH-5-4-9',    # Dzērieni - Limonādes - Toniki
+    'SH-5-6-1',    # Dzērieni - Sīrupi - Kafijas un kokteiļu sīrupi
+    'SH-5-6-2',    # Dzērieni - Sīrupi - Ogu un augļu sīrupi
+    'SH-5-7-12',   # Dzērieni - Sporta dzērieni
+    'SH-5-7-13',   # Dzērieni - Vitaminizētais ūdens
+    'SH-5-8-1',    # Dzērieni - Sulas - Ābolu un miksētas ābolu
+    'SH-5-8-2',    # Dzērieni - Sulas - Citrusaugļu
+    'SH-5-8-3',    # Dzērieni - Sulas - Ogu
+    'SH-5-8-4',    # Dzērieni - Sulas - Dārzeņu
+    'SH-5-8-5',    # Dzērieni - Sulas - Multiaugļu
+    'SH-5-8-6',    # Dzērieni - Sulas - Citu augļu sulas
+    'SH-5-11',     # Dzērieni - Svaigas sulas un smūtiji
+    'SH-5-11-1',   # Dzērieni - Svaigas sulas - Augļu sulas un smūtiji
+    'SH-5-11-2',   # Dzērieni - Svaigas sulas - Dārzeņu sulas un smūtiji
+    'SH-5-12-18',  # Dzērieni - Ūdens - Gāzēts ūdens
+    'SH-5-12-19',  # Dzērieni - Ūdens - Negāzēts ūdens
+    'SH-5-12-20',  # Dzērieni - Ūdens - Ūdens ar garšām
     'SH-11-8-1',   # Pilnpiens (whole milk)
     'SH-11-8-2',   # Other milk
     'SH-11-8-22',  # Pasterizēts piens (pasteurized milk)
@@ -363,10 +390,7 @@ class NutriscoreCalculator:
         if not category_code:
             return 'general'
         
-        if category_code.startswith('SH-5'):
-            return 'beverage'
-        
-        if category_code in BEVERAGE_DAIRY_CATEGORIES:
+        if category_code in BEVERAGE_CATEGORIES:
             return 'beverage'
         
         if category_code in self.fat_oil_nut_categories:
