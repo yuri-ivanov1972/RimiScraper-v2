@@ -595,7 +595,9 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                     salt=salt,
                     protein=protein,
                     fiber=fiber,
-                    category_code=product.get('rimi_category_code')
+                    category_code=product.get('rimi_category_code'),
+                    product_name=product.get('name'),
+                    ingredients_text=product.get('ingredients_text')
                 )
                 
                 new_grade = nutri_result.get('grade') if nutri_result.get('success') else product.get('nutri_score_grade')
@@ -1352,6 +1354,7 @@ def get_products_for_nutriscore_recalc(db: ProductViewDatabase, category_code: s
             nf.salt,
             nf.protein,
             nf.fiber,
+            nf.ingredients_text,
             nf.nutri_score_grade as current_grade,
             nf.nutri_score_points as current_score
         FROM products p
@@ -1391,6 +1394,7 @@ def recalculate_nutriscore_for_product(db: ProductViewDatabase, sku: str):
             nf.salt,
             nf.protein,
             nf.fiber,
+            nf.ingredients_text,
             nf.nutri_score_grade as current_grade,
             nf.nutri_score_points as current_score
         FROM products p
@@ -1433,7 +1437,9 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
             salt=float(product['salt']),
             protein=float(product['protein']),
             fiber=fiber_float,
-            category_code=product.get('category_code')
+            category_code=product.get('category_code'),
+            product_name=product.get('name'),
+            ingredients_text=product.get('ingredients_text')
         )
         
         if result['success']:
@@ -1595,7 +1601,9 @@ def section_fiber_estimation():
                         salt=float(product['salt']),
                         protein=float(product['protein']),
                         fiber=new_fiber,
-                        category_code=product.get('category_code')
+                        category_code=product.get('category_code'),
+                        product_name=product.get('name'),
+                        ingredients_text=product.get('ingredients_text')
                     )
                     if calc_result.get('success'):
                         new_grade = calc_result['grade']
@@ -1672,7 +1680,9 @@ def section_fiber_estimation():
                         salt=float(result['salt']),
                         protein=float(result['protein']),
                         fiber=new_fiber,
-                        category_code=result['category']
+                        category_code=result['category'],
+                        product_name=result.get('name'),
+                        ingredients_text=result.get('ingredients_text')
                     )
                     if calc_result.get('success'):
                         new_grade = calc_result['grade']
