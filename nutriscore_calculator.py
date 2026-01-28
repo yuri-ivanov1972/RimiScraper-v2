@@ -61,21 +61,26 @@ CHEESE_CATEGORIES = {
 }
 
 RED_MEAT_CATEGORIES = {
-    'SH-6-7-12',   # Fresh beef
-    'SH-6-7-13',   # Fresh pork
-    'SH-6-7-15',   # Fresh lamb
-    'SH-6-7-16',   # Fresh veal
-    'SH-6-7-18',   # Fresh minced meat
-    'SH-6-7-19',   # Fresh meat assortments
-    'SH-6-7-21',   # Other fresh meat
-    'SH-6-14-32',  # Processed meat - sausages
-    'SH-6-14-33',  # Processed meat - cold cuts
-    'SH-6-14-34',  # Processed meat - bacon
-    'SH-6-14-35',  # Processed meat - ham
-    'SH-6-14-36',  # Processed meat - other
-    'SH-6-14-37',  # Processed meat
-    'SH-6-14-38',  # Processed meat
-    'SH-6-14-39',  # Processed meat
+    'SH-6-10-26',  # Pārstrādāta gaļa - Auksti kūpinātā gaļa
+    'SH-6-10-27',  # Pārstrādāta gaļa - Karsti kūpinātā gaļa
+    'SH-6-11',     # Svaiga gaļa - Dažādu veidu maltā gaļa
+    'SH-6-1-1',    # Cīsiņi, sardeles, desiņas - Cīsiņi un sardeles
+    'SH-6-1-2',    # Cīsiņi, sardeles, desiņas - Grila desiņas
+    'SH-6-15-40',  # Svaiga gaļa - Cūkgaļa
+    'SH-6-15-41',  # Svaiga gaļa - Liellopa un teļa gaļa
+    'SH-6-15-42',  # Svaiga gaļa - Svaigas gaļas subprodukti
+    'SH-6-15-6',   # Svaiga gaļa - Jēra gaļa
+    'SH-6-17-49',  # Marinēta gaļa - Cūkgaļa
+    'SH-6-20-4',   # Mani Gardumi - Gatavās maltītes
+    'SH-6-21',     # Pārstrādāta gaļa - Vītinātās gaļas produkti
+    'SH-6-2-1',    # Desas un pastētes - Pastēte, aknu desas
+    'SH-6-2-3',    # Desas un pastētes - Auksti kūpinātās desas
+    'SH-6-2-4',    # Desas un pastētes - Karsti kūpinātās desas
+    'SH-6-2-5',    # Desas un pastētes - Vārītās desas
+    'SH-6-5-1',    # Gaļas maltītes - Galerti, gaļa želejā
+    'SH-6-5-2',    # Gaļas maltītes - Gaļas bumbiņas, nageti
+    'SH-6-5-3',    # Gaļas maltītes - Lēni pagatavotas gaļas maltītes
+    'SH-6-9-14',   # Zivju un gaļas konservi - Gaļas konservi
 }
 
 FULL_FVN_CATEGORIES = {
@@ -671,7 +676,7 @@ if __name__ == '__main__':
     print("\n6. Beef steak (Red Meat - protein capped at 2):")
     result = calculator.calculate_single_product(
         energy_kj=800, sugars=0, saturated_fat=5, salt=0.2,
-        protein=25, fiber=0, category_code="SH-6-7-12"
+        protein=25, fiber=0, category_code="SH-6-15-41"  # Liellopa un teļa gaļa
     )
     print(f"   Grade: {result['grade']}, Score: {result['score']}")
     print(f"   N={result['n_points']}, P={result['p_points']}, Protein: {result['protein_status']}")
