@@ -1,0 +1,136 @@
+2026-01-28 02:01:59.23
+96b16887
+User
+Current products in DB: 0
+2026-01-28 02:01:59.23
+96b16887
+User
+⚠️ No products found on Rimi website
+2026-01-28 02:01:59.23
+96b16887
+User
+Fetching category page: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-13-9
+2026-01-28 02:01:59.23
+96b16887
+User
+Fetching category page: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-6-13
+2026-01-28 02:01:59.23
+96b16887
+User
+Collecting SKUs from category SH-12-3
+2026-01-28 02:01:59.23
+96b16887
+User
+[56/75] Pārstrādātās zivis (SH-6-14)
+2026-01-28 02:01:59.23
+96b16887
+User
+Category URL: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-12-1
+2026-01-28 02:01:59.23
+96b16887
+User
+⚠️ No products found on Rimi website
+2026-01-28 02:01:59.23
+96b16887
+User
+Fetching category page: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-12-1
+2026-01-28 02:01:59.23
+96b16887
+User
+⚠️ No products found on Rimi website
+2026-01-28 02:01:59.23
+96b16887
+User
+Error getting pagination info: 503 Server Error: Service Unavailable for url: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-13-9
+2026-01-28 02:01:59.23
+96b16887
+User
+📥 Collecting products from Rimi...
+2026-01-28 02:01:59.23
+96b16887
+User
+[55/75] Pārstrādāti jūras produkti un ikri (SH-6-13)
+2026-01-28 02:01:59.23
+96b16887
+User
+Error getting pagination info: 503 Server Error: Service Unavailable for url: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-6-13
+2026-01-28 02:01:59.23
+96b16887
+User
+No products found in category SH-13-9
+2026-01-28 02:01:59.23
+96b16887
+User
+[58/75] Saldās garšvielas (SH-4-9)
+2026-01-28 02:01:59.23
+96b16887
+User
+No products found in category SH-6-13
+2026-01-28 02:01:59.23
+96b16887
+User
+[57/75] Rieksti un žāvēti augļi (SH-13-9)
+2026-01-28 02:01:59.23
+96b16887
+User
+Category URL: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-4-9
+2026-01-28 02:01:59.23
+96b16887
+User
+Current products in DB: 0
+2026-01-28 02:02:04.00
+96b16887
+User
+2026-01-28 00:02:04,005 - __main__ - INFO - Successfully queued all categories
+2026-01-28 03:00:04.02
+96b16887
+User
+2026-01-28 01:00:04,023 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 03:00 Latvia time (uptime: 50h 57m)
+2026-01-28 04:00:04.04
+96b16887
+User
+2026-01-28 02:00:04,042 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 04:00 Latvia time (uptime: 51h 57m)
+2026-01-28 05:00:04.06
+96b16887
+User
+2026-01-28 03:00:04,060 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 05:00 Latvia time (uptime: 52h 57m)
+2026-01-28 06:00:04.07
+96b16887
+User
+2026-01-28 04:00:04,078 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 06:00 Latvia time (uptime: 53h 57m)
+2026-01-28 06:00:04.07
+96b16887
+User
+2026-01-28 04:00:04,079 - __main__ - INFO - ============================================================
+2026-01-28 06:00:04.07
+96b16887
+User
+2026-01-28 04:00:04,078 - __main__ - INFO - ============================================================
+2026-01-28 06:00:04.07
+96b16887
+User
+2026-01-28 04:00:04,079 - __main__ - INFO - SCHEDULED: Generating daily report (06:00)
+2026-01-28 06:00:04.52
+96b16887
+User
+2026-01-28 04:00:04,522 - __main__ - WARNING - Report generation issue: Failed to save report to database
+2026-01-28 07:00:04.54
+96b16887
+User
+2026-01-28 05:00:04,539 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 07:00 Latvia time (uptime: 54h 57m)
+2026-01-28 08:00:04.56
+96b16887
+User
+2026-01-28 06:00:04,558 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 08:00 Latvia time (uptime: 55h 57m)
+2026-01-28 09:00:04.57
+96b16887
+User
+2026-01-28 07:00:04,578 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 09:00 Latvia time (uptime: 56h 57m)
+2026-01-28 10:00:04.59
+96b16887
+User
+2026-01-28 08:00:04,596 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 10:00 Latvia time (uptime: 57h 57m)
+2026-01-28 11:00:04.61
+96b16887
+User
+2026-01-28 09:00:04,615 - __main__ - INFO - 💓 Scheduler heartbeat - 2026-01-28 11:00 Latvia time (uptime: 58h 57m)

@@ -1,0 +1,162 @@
+Calculating the **Nutri-Score 2.0 (2024 Update)** is significantly more complex than the original version because it introduces specific categories with different point scales and mathematical rules.
+
+Below is a comprehensive Python script that implements the official 2024 logic for:
+1.  **General Foods** (Cereals, ready meals, etc.)
+2.  **Red Meat** (Capped protein points)
+3.  **Cheese** (Exempt from the "Protein Block")
+4.  **Fats, Oils, Nuts, and Seeds** (Calculated via "Energy from Saturates" and Fat Ratio)
+5.  **Beverages** (Includes the new "Sweetener Penalty" and stricter sugar/energy scales)
+
+### Comprehensive Nutri-Score 2024 Python Script
+
+```python
+import math
+
+def get_points(value, thresholds):
+    """Helper to determine points based on a list of upper limits."""
+    for points, limit in enumerate(thresholds):
+        if value <= limit:
+            return points
+    return len(thresholds)
+
+def calculate_2024_score(category, energy_kj, sugars_g, sat_fat_g, salt_g, 
+                         protein_g, fiber_g, fvl_pct, 
+                         total_fat_g=None, has_sweeteners=False):
+    """
+    category: 'general', 'red_meat', 'cheese', 'fats_oils_nuts', 'beverage'
+    Note: 'beverage' category includes milk, yogurt drinks, and plant drinks.
+    """
+    
+    # -------------------------------------------------------------------------
+    # 1. DEFINE THRESHOLDS (2024 OFFICIAL TABLES)
+    # -------------------------------------------------------------------------
+    
+    # Negative Points (N)
+    t_energy_gen = [335, 670, 1005, 1340, 1675, 2010, 2345, 2680, 3015, 3350] # 0-10
+    t_sugar_gen  = [3.4, 6.8, 10, 14, 17, 20, 24, 27, 31, 34, 37, 41, 44, 48, 51] # 0-15
+    t_satfat_gen = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] # 0-10
+    t_salt_gen   = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 
+                    2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0] # 0-20
+    
+    # Negative Points (Beverages)
+    t_energy_bev = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270] # 0-10
+    t_sugar_bev  = [0, 0.5, 2, 3.5, 5, 6, 7, 8, 9, 10] # 0-10
+    t_salt_bev   = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 
+                    0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
+
+    # Positive Points (P)
+    t_fiber_gen   = [0.7, 1.4, 2.1, 2.8, 3.5] # 0-5
+    t_protein_gen = [1.2, 2.4, 3.6, 4.8, 6.0, 7.2, 8.4] # 0-7
+    t_fvl_gen     = [40, 60, 80] # Points mapping: 0, 1, 2, 5
+    
+    # Positive Points (Beverages)
+    t_protein_bev = [1.2, 2.1, 3.0, 3.9, 4.8, 5.7, 6.6] # 0-7
+    t_fvl_bev     = [40, 60, 80] # Points mapping: 0, 2, 4, 6
+
+    # -------------------------------------------------------------------------
+    # 2. CALCULATE POINTS BASED ON CATEGORY
+    # -------------------------------------------------------------------------
+    
+    if category == 'beverage':
+        p_energy = get_points(energy_kj, t_energy_bev)
+        p_sugar  = get_points(sugars_g, t_sugar_bev)
+        p_salt   = get_points(salt_g, t_salt_bev)
+        p_satfat = get_points(sat_fat_g, t_satfat_gen) # Standard satfat
+        p_sweet  = 4 if has_sweeteners else 0
+        total_n  = p_energy + p_sugar + p_salt + p_satfat + p_sweet
+        
+        p_protein = get_points(protein_g, t_protein_bev)
+        p_fiber   = get_points(fiber_g, t_fiber_gen)
+        fvl_raw   = get_points(fvl_pct, t_fvl_bev)
+        p_fvl     = [0, 2, 4, 6][fvl_raw]
+        total_p   = p_protein + p_fiber + p_fvl
+        
+    elif category == 'fats_oils_nuts':
+        # Rule: Energy from saturates (37kJ per 1g sat fat)
+        energy_from_satfat = sat_fat_g * 37
+        p_energy = get_points(energy_from_satfat, [120*i for i in range(1, 11)])
+        
+        # Rule: SatFat / Total Fat ratio
+        ratio = (sat_fat_g / total_fat_g * 100) if total_fat_g else 0
+        p_satfat = get_points(ratio, [10, 16, 22, 28, 34, 40, 46, 52, 58, 64])
+        
+        p_sugar  = get_points(sugars_g, t_sugar_gen)
+        p_salt   = get_points(salt_g, t_salt_gen)
+        total_n  = p_energy + p_sugar + p_salt + p_satfat
+        
+        p_protein = get_points(protein_g, t_protein_gen)
+        p_fiber   = get_points(fiber_g, t_fiber_gen)
+        fvl_raw   = get_points(fvl_pct, t_fvl_gen)
+        p_fvl     = 5 if fvl_raw == 3 else fvl_raw
+        total_p   = p_protein + p_fiber + p_fvl
+
+    else: # General, Red Meat, Cheese
+        p_energy = get_points(energy_kj, t_energy_gen)
+        p_sugar  = get_points(sugars_g, t_sugar_gen)
+        p_satfat = get_points(sat_fat_g, t_satfat_gen)
+        p_salt   = get_points(salt_g, t_salt_gen)
+        total_n  = p_energy + p_sugar + p_satfat + p_salt
+        
+        p_protein = get_points(protein_g, t_protein_gen)
+        if category == 'red_meat': p_protein = min(p_protein, 2) # CAP at 2
+            
+        p_fiber = get_points(fiber_g, t_fiber_gen)
+        fvl_raw = get_points(fvl_pct, t_fvl_gen)
+        p_fvl   = 5 if fvl_raw == 3 else fvl_raw
+        total_p = p_protein + p_fiber + p_fvl
+
+    # -------------------------------------------------------------------------
+    # 3. APPLY SPECIAL CALCULATION RULES (THE "PROTEIN BLOCK")
+    # -------------------------------------------------------------------------
+    
+    # Default behavior: If N >= 11 and FVL < 5, protein points are removed.
+    final_score = total_n - total_p
+    protein_status = "Included"
+
+    if category not in ['cheese', 'beverage']:
+        if total_n >= 11 and p_fvl < 5:
+            final_score = total_n - (p_fiber + p_fvl)
+            protein_status = f"Blocked (N={total_n})"
+
+    # -------------------------------------------------------------------------
+    # 4. MAP SCORE TO GRADE
+    # -------------------------------------------------------------------------
+    if category == 'beverage':
+        # Water is always A. Other bev thresholds:
+        if energy_kj == 0 and sugars_g == 0 and not has_sweeteners: # Pure water
+            grade = "A"
+        elif final_score <= 2:  grade = "B"
+        elif final_score <= 6:  grade = "C"
+        elif final_score <= 9:  grade = "D"
+        else:                   grade = "E"
+    elif category == 'fats_oils_nuts':
+        if final_score <= -6:   grade = "A"
+        elif final_score <= 2:  grade = "B"
+        elif final_score <= 10: grade = "C"
+        elif final_score <= 18: grade = "D"
+        else:                   grade = "E"
+    else: # General, Cheese, Red Meat
+        if final_score <= -1:   grade = "A"
+        elif final_score <= 2:  grade = "B"
+        elif final_score <= 10: grade = "C"
+        elif final_score <= 18: grade = "D"
+        else:                   grade = "E"
+
+    return {"grade": grade, "score": final_score, "n_points": total_n, "p_status": protein_status}
+
+# --- EXAMPLES ---
+print("Milzu! Cereal (General):", calculate_2024_score('general', 1801, 24, 0.5, 0.3, 13, 16, 0))
+print("Camembert (Cheese):     ", calculate_2024_score('cheese', 1200, 0.5, 18, 1.5, 20, 0, 0))
+print("Olive Oil (Fats/Oils):  ", calculate_2024_score('fats_oils_nuts', 3700, 0, 14, 0, 0, 0, 0, total_fat_g=100))
+print("Diet Cola (Beverage):   ", calculate_2024_score('beverage', 4, 0, 0, 0, 0, 0, 0, has_sweeteners=True))
+```
+
+### Key Logic for Categories:
+*   **Red Meat:** Uses the `general` thresholds but forces `p_protein = min(p_protein, 2)`. This reflects the scientific recommendation to limit red meat regardless of its protein content.
+*   **Cheese:** Skips the `if total_n >= 11` block. This ensures calcium-rich cheeses aren't overly penalized for their natural saturated fat/salt content.
+*   **Fats & Oils:** 
+    *   Instead of total energy, it looks at `Energy from Saturates`. This rewards oils with low saturated fat (like olive or rapeseed).
+    *   It uses a **ratio** of Saturated Fat to Total Fat. This allows olive oil (high total fat, low sat fat) to reach a **B** rating.
+*   **Beverages:** 
+    *   **Sweetener Penalty:** Simply having an artificial sweetener adds **4 points** to your negative score. This is why many "Zero" sodas moved from B to C or D.
+    *   **Water:** Water is the only beverage that can achieve an **A**. All other drinks, including milk and 100% fruit juice, start at B or lower.
