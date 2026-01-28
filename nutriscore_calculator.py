@@ -118,10 +118,28 @@ HALF_FVN_CATEGORIES = {
     'SH-4-12-85',  # Sauces - Tomato sauces and pastes
 }
 
-SWEETENED_BEVERAGE_KEYWORDS = [
-    'cola', 'fanta', 'sprite', 'pepsi', '7up', 'schweppes',
-    'zero', 'light', 'diet', 'sugar-free', 'bez cukura',
-    'stevia', 'aspartam', 'sukraloz', 'acesulfam',
+LATVIAN_SWEETENER_INDICATORS = [
+    'saldināšanas līdzeklis', 'saldinātājs', 'saldinātāji',
+    'aspartāms', 'aspartam',
+    'acesulfāms', 'acesulfāms k', 'acesulfam',
+    'sukraloze', 'sukraloz', 'sucralose',
+    'saharīns', 'sacharin',
+    'ciklamāts', 'ciklamāt', 'cyclamate',
+    'neotāms', 'neotam',
+    'advantāms', 'advantam',
+    'stevijas glikozīdi', 'stevia', 'steviol',
+    'taumatīns', 'thaumatin',
+    'maltīts', 'maltitol',
+    'sorbīts', 'sorbitol',
+    'ksilitols', 'xylitol',
+    'eritritols', 'erythritol',
+    'izomaltīts', 'isomalt',
+    'mannīts', 'mannitol',
+    'zero', 'light', 'diet', 'bez cukura', 'sugar free', 'sugar-free',
+    'bezkaloriju', 'bez kalorijām',
+    'e950', 'e951', 'e952', 'e953', 'e954', 'e955', 
+    'e957', 'e959', 'e960', 'e961', 'e962', 'e965', 
+    'e966', 'e967', 'e968', 'e969',
 ]
 
 
@@ -315,19 +333,19 @@ class NutriscoreCalculator:
         self.half_fvn_categories = HALF_FVN_CATEGORIES
     
     def _detect_sweeteners(self, product_name: Optional[str], ingredients_text: Optional[str] = None) -> bool:
-        """Detect if product likely contains artificial sweeteners based on name/ingredients."""
+        """Detect if product likely contains artificial sweeteners based on name/ingredients.
+        
+        Uses LATVIAN_SWEETENER_INDICATORS which includes:
+        - Latvian sweetener names (saldināšanas līdzeklis, aspartāms, sukraloze, etc.)
+        - English equivalents for international products
+        - E-numbers for artificial sweeteners (E950-E969)
+        - Marketing terms (zero, light, diet, bez cukura)
+        """
         text_to_check = (product_name or '').lower()
         if ingredients_text:
             text_to_check += ' ' + ingredients_text.lower()
         
-        sweetener_indicators = [
-            'aspartam', 'sukraloz', 'sucralose', 'acesulfam', 'stevia',
-            'ciklamāt', 'cyclamate', 'sacharin', 'neotam', 'advantam',
-            'zero', 'light', 'diet', 'sugar free', 'bez cukura', 'sugar-free',
-            'e950', 'e951', 'e952', 'e954', 'e955', 'e960', 'e961', 'e962'
-        ]
-        
-        return any(indicator in text_to_check for indicator in sweetener_indicators)
+        return any(indicator in text_to_check for indicator in LATVIAN_SWEETENER_INDICATORS)
     
     def _determine_category(self, category_code: Optional[str]) -> str:
         """Determine the Nutri-Score category based on product category code."""
