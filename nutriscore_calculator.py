@@ -231,16 +231,15 @@ def calculate_nutriscore_2024(
     t_salt_gen = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0,
                   2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0]
     
-    t_energy_bev = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270]
-    t_sugar_bev = [0, 0.5, 2, 3.5, 5, 6, 7, 8, 9, 10]
-    t_salt_bev = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
-                  0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0]
+    t_energy_bev = [0, 30, 90, 150, 210, 240, 270, 300, 330, 360, 390]
+    t_sugar_bev = [0, 0.5, 2, 3.5, 5, 6, 7, 8, 9, 10, 11]
     
     t_fiber_gen = [0.7, 1.4, 2.1, 2.8, 3.5]
     t_protein_gen = [1.2, 2.4, 3.6, 4.8, 6.0, 7.2, 8.4]
     t_fvl_gen = [40, 60, 80]
     
-    t_protein_bev = [1.2, 2.1, 3.0, 3.9, 4.8, 5.7, 6.6]
+    t_protein_bev = [1.2, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0]
+    t_fiber_bev = [3, 4.1, 5.2, 6.3, 7.4]
     t_fvl_bev = [40, 60, 80]
     
     p_sweetener = 0
@@ -249,13 +248,13 @@ def calculate_nutriscore_2024(
     if category == 'beverage':
         p_energy = get_points(energy_kj, t_energy_bev)
         p_sugar = get_points(sugars_g, t_sugar_bev)
-        p_salt = get_points(salt_g, t_salt_bev)
+        p_salt = get_points(salt_g, t_salt_gen)
         p_satfat = get_points(sat_fat_g, t_satfat_gen)
         p_sweetener = 4 if has_sweeteners else 0
         total_n = p_energy + p_sugar + p_salt + p_satfat + p_sweetener
         
         p_protein = get_points(protein_g, t_protein_bev)
-        p_fiber = get_points(fiber_g, t_fiber_gen)
+        p_fiber = get_points(fiber_g, t_fiber_bev)
         fvl_raw = get_points(fvl_pct, t_fvl_bev)
         p_fvl = [0, 2, 4, 6][fvl_raw] if fvl_raw <= 3 else 6
         total_p = p_protein + p_fiber + p_fvl
