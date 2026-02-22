@@ -158,6 +158,7 @@ BEVERAGE_CATEGORIES = {
     'SH-11-8-24',  # UHT piens (UHT milk)
     'SH-11-3-8',   # Kefīrs un kefīra dzērieni (kefir drinks)
     'SH-11-3-9',   # Other fermented drinks
+    'SH-11-2-5',   # Dzeramais jogurts - drinking yogurt
     'SH-4-14-93',  # Kokosa piens (coconut milk) - plant drink
 }
 
