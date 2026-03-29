@@ -1161,18 +1161,113 @@ def section_change_report():
         st.code(traceback.format_exc())
 
 
+def section_backfill_quantities():
+    """Section: Backfill quantity_value/quantity_unit for NxM multiplier products."""
+    st.header("📦 Backfill Quantities")
+    st.info(
+        "Fixes products whose names contain a multiplier pattern (e.g. **25x2g**, **6x0.33l**) "
+        "but whose `quantity_value` stores only the unit size instead of the total. "
+        "Example: *Melnā tēja Ahmad Tea Earl Grey 25x2g* → corrects from 2 g to 50 g."
+    )
+
+    import re
+    from decimal import Decimal
+
+    db = ProductViewDatabase()
+    db._ensure_connection()
+
+    def _parse_multiplier(name: str):
+        pattern = r'(\d+)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)\b'
+        m = re.search(pattern, name.lower())
+        if m:
+            try:
+                return Decimal(m.group(1)) * Decimal(m.group(2).replace(',', '.')), m.group(3).lower()
+            except Exception:
+                pass
+        return None, None
+
+    with db.connection.cursor() as cur:
+        cur.execute(
+            "SELECT product_id, sku, name, quantity_value, quantity_unit "
+            "FROM products WHERE name ~ '[0-9]+[xX][0-9]' ORDER BY name"
+        )
+        rows = [dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]
+
+    affected = []
+    for row in rows:
+        new_val, new_unit = _parse_multiplier(row['name'])
+        if new_val is None:
+            continue
+        old_val = row['quantity_value']
+        old_unit = row['quantity_unit']
+        if old_val != new_val or old_unit != new_unit:
+            affected.append({**row, 'new_val': new_val, 'new_unit': new_unit,
+                              'old_val': old_val, 'old_unit': old_unit})
+
+    if not affected:
+        st.success(f"✅ All {len(rows)} products with multiplier patterns already have correct quantities. Nothing to fix.")
+        return
+
+    st.write(f"Found **{len(affected)}** products needing correction (out of {len(rows)} with multiplier patterns):")
+
+    import pandas as pd
+    preview_df = pd.DataFrame([
+        {
+            'SKU': r['sku'],
+            'Name': r['name'][:60],
+            'Current': f"{r['old_val']} {r['old_unit']}",
+            'Correct': f"{r['new_val']} {r['new_unit']}",
+        }
+        for r in affected
+    ])
+    st.dataframe(preview_df, use_container_width=True, hide_index=True)
+
+    st.warning("⚠️ This will update the database. The change is non-destructive — it only corrects the total quantity.")
+
+    if st.button("Run Quantity Backfill", type="primary"):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        updated = 0
+        errors = 0
+
+        with db.connection.cursor() as cur:
+            for i, row in enumerate(affected):
+                try:
+                    cur.execute(
+                        "UPDATE products SET quantity_value = %s, quantity_unit = %s WHERE product_id = %s",
+                        (row['new_val'], row['new_unit'], row['product_id'])
+                    )
+                    updated += 1
+                except Exception as e:
+                    errors += 1
+                    status_text.text(f"Error on {row['sku']}: {e}")
+                progress_bar.progress((i + 1) / len(affected))
+
+        if errors == 0:
+            db.connection.commit()
+            status_text.text("Done!")
+            st.success(f"✅ Successfully updated {updated} products with correct quantities.")
+        else:
+            db.connection.rollback()
+            st.error(f"❌ Encountered {errors} errors — rolled back all changes. No data was modified.")
+
+
 def section_nutriscore_recalculation():
     """Section: Nutri-Score Recalculation"""
     st.header("🔄 Nutri-Score Tools")
     
     sub_tab = st.radio(
         "Tool:",
-        ["🔄 Recalculate Nutri-Score", "🌾 Fiber Estimation"],
+        ["🔄 Recalculate Nutri-Score", "🌾 Fiber Estimation", "📦 Backfill Quantities"],
         horizontal=True
     )
-    
+
     if sub_tab == "🌾 Fiber Estimation":
         section_fiber_estimation()
+        return
+
+    if sub_tab == "📦 Backfill Quantities":
+        section_backfill_quantities()
         return
     
     st.info("""
