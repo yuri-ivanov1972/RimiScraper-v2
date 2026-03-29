@@ -44,7 +44,8 @@ CREATE TABLE products (
     nutrition_source    VARCHAR(50),
     needs_enrichment    BOOLEAN              DEFAULT FALSE,
     enrichment_reviewed BOOLEAN              DEFAULT FALSE,
-    enrichment_skipped  BOOLEAN              DEFAULT FALSE
+    enrichment_skipped      BOOLEAN              DEFAULT FALSE,
+    has_confirmed_match     BOOLEAN              DEFAULT FALSE
 );
 
 
