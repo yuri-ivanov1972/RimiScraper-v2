@@ -660,40 +660,53 @@ class EnhancedUpdateCoordinator:
         """Parse quantity from product name"""
         import re
         from decimal import Decimal
-        
+
         if not product_name:
             return None, None
-        
-        # Enhanced patterns for quantity extraction
-        patterns = [
-            # Standard patterns with various units
-            r'(\d+(?:[.,]\d+)?)\s*(l|kg|g|ml|gb|gab|tk|tükk|m)\b',
-            # Patterns for ranges or complex quantities
-            r'(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(g|ml|l)',
-            # Patterns for products sold by piece
-            r'(\d+)\s*(gab\.?|tk\.?|tükk)',
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, product_name.lower())
-            if match:
-                try:
-                    quantity_str = match.group(1).replace(',', '.')
-                    quantity_value = Decimal(quantity_str)
-                    quantity_unit = match.group(2) if len(match.groups()) >= 2 else match.group(-1)
-                    
-                    # Normalize unit to database format
-                    unit_mapping = {
-                        'gb': 'gab',
-                        'tk': 'gab', 
-                        'tükk': 'gab'
-                    }
-                    quantity_unit = unit_mapping.get(quantity_unit, quantity_unit)
-                    
-                    return quantity_value, quantity_unit
-                except:
-                    continue
-        
+
+        name_lower = product_name.lower()
+
+        # Check for multiplier pattern first: e.g. "25x2g", "6x0,33l", "20x1,5g"
+        # Matches: multiplier x unit_qty unit  -> total = multiplier * unit_qty
+        multiplier_pattern = r'(\d+)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)\b'
+        m = re.search(multiplier_pattern, name_lower)
+        if m:
+            try:
+                multiplier = Decimal(m.group(1))
+                unit_qty = Decimal(m.group(2).replace(',', '.'))
+                unit = m.group(3).lower()
+                return multiplier * unit_qty, unit
+            except:
+                pass
+
+        # Standard patterns with various units
+        standard_pattern = r'(\d+(?:[.,]\d+)?)\s*(l|kg|g|ml|gb|gab|tk|tükk|m)\b'
+        match = re.search(standard_pattern, name_lower)
+        if match:
+            try:
+                quantity_value = Decimal(match.group(1).replace(',', '.'))
+                quantity_unit = match.group(2)
+                unit_mapping = {
+                    'gb': 'gab',
+                    'tk': 'gab',
+                    'tükk': 'gab'
+                }
+                quantity_unit = unit_mapping.get(quantity_unit, quantity_unit)
+                return quantity_value, quantity_unit
+            except:
+                pass
+
+        # Patterns for products sold by piece count only
+        piece_pattern = r'(\d+)\s*(gab\.?|tk\.?|tükk)'
+        match = re.search(piece_pattern, name_lower)
+        if match:
+            try:
+                quantity_value = Decimal(match.group(1))
+                quantity_unit = unit_mapping = {'gab.': 'gab', 'tk.': 'gab', 'tükk': 'gab'}.get(match.group(2), 'gab')
+                return quantity_value, quantity_unit
+            except:
+                pass
+
         return None, None
     
     def _parse_price(self, price_str: str) -> Optional[float]:

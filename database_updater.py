@@ -575,11 +575,23 @@ class DatabaseUpdater:
     def _parse_quantity(self, product_name: str) -> Tuple[Optional[Decimal], Optional[str]]:
         """Extract quantity from product name"""
         try:
+            name_lower = product_name.lower()
+
+            # Check for multiplier pattern first: e.g. "25x2g", "6x0,33l", "20x1,5g"
+            # Matches: multiplier x unit_qty unit  -> total = multiplier * unit_qty
+            multiplier_pattern = r'(\d+)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l)\b'
+            m = re.search(multiplier_pattern, name_lower)
+            if m:
+                multiplier = Decimal(m.group(1))
+                unit_qty = Decimal(m.group(2).replace(',', '.'))
+                unit = m.group(3).lower()
+                return multiplier * unit_qty, unit
+
             # Look for patterns like "500g", "1.5L", "250ml", "10 gb.", etc.
             # Added Latvian units: gb (gabali = pieces), gab (gabali)
             quantity_pattern = r'(\d+(?:[.,]\d+)?)\s*(g|kg|ml|l|pcs|pc|gab|gb)\.?\b'
-            match = re.search(quantity_pattern, product_name.lower())
-            
+            match = re.search(quantity_pattern, name_lower)
+
             if match:
                 value = Decimal(match.group(1).replace(',', '.'))
                 unit = match.group(2).lower()
@@ -587,11 +599,11 @@ class DatabaseUpdater:
                 if unit in ['gb']:
                     unit = 'gab'  # Keep Latvian abbreviation for pieces
                 return value, unit
-            
+
             # Check for products sold by weight (ending with " kg")
-            if product_name.lower().strip().endswith(' kg'):
+            if name_lower.strip().endswith(' kg'):
                 return None, 'kg'  # Variable weight, no fixed quantity
-            
+
             return None, None
         except:
             return None, None
