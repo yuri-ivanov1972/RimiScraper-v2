@@ -4,10 +4,13 @@ Update Report Module - Track and log daily update results
 Monitors product changes, price changes, new products, and generates summary reports
 """
 import os
+import logging
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.extras import RealDictCursor, Json
 from datetime import datetime
 from typing import Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class UpdateReport:
@@ -309,7 +312,7 @@ class UpdateReport:
                 report['products_updated'],
                 report['products_removed'],
                 len(report['price_changes']),
-                report.get('availability_changes', {}),
+                Json(report.get('availability_changes') or {}),
                 len(report['errors']),
                 self._generate_summary_text(report)
             ))
@@ -321,6 +324,7 @@ class UpdateReport:
             return log_id
             
         except Exception as e:
+            logger.error(f"Error saving report to database: {e}", exc_info=True)
             print(f"❌ Error saving report: {e}")
             if conn:
                 conn.rollback()
