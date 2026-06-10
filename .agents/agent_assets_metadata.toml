@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "KkYggD3PSRsBDjPZjL1vt"
+uri = "file://rimi_product_scraper_slides.pptx"
+type = "slides"
+title = "Rimi Product Scraper — Slide Deck"
