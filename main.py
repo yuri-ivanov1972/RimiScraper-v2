@@ -44,6 +44,20 @@ def render_nutri_score_badge(grade: str) -> str:
     return f'<div style="background-color: {color}; color: white; font-weight: bold; padding: 4px 8px; border-radius: 4px; display: inline-block; font-size: 14px;">{grade}</div>'
 
 
+def render_nova_badge(nova_score: int, explicit: bool = True) -> str:
+    """Render a coloured NOVA score badge as HTML."""
+    if not nova_score:
+        return ""
+    colors = {1: '#038141', 2: '#85BB2F', 3: '#EE8100', 4: '#E63E11'}
+    color = colors.get(nova_score, '#999')
+    opacity = "1.0" if explicit else "0.6"
+    return (
+        f'<span style="background-color:{color};color:white;font-weight:bold;'
+        f'padding:2px 7px;border-radius:3px;font-size:12px;opacity:{opacity}">'
+        f'NOVA {nova_score}</span>'
+    )
+
+
 def render_product_card(product: dict) -> None:
     """Render a single product card in grid"""
     
@@ -121,10 +135,8 @@ def render_category_tree_node(category: dict, db: ProductViewDatabase, level: in
             render_category_tree_node(child, db, level + 1)
 
 
-def section_category_processing():
-    """Section 1: Category Processing"""
-    st.header("📦 Category Processing")
-    
+def _job_queue_section():
+    """Job Queue inner content (called from section_category_processing tab)."""
     col1, col2 = st.columns([3, 1])
     
     with col1:
@@ -365,6 +377,151 @@ def section_category_processing():
         python worker.py --daemon --chunk-size 15 --max-workers 3 --heartbeat-interval 30
         ```
         """)
+
+
+def section_nova_categories():
+    """NOVA Classification tab — manually assign NOVA 1–4 to each category."""
+    st.subheader("🔢 NOVA Category Classification")
+
+    with st.expander("ℹ️ NOVA classification guide", expanded=False):
+        st.markdown("""
+| Score | Group | Typical examples |
+|---|---|---|
+| **NOVA 1** | Unprocessed / minimally processed | Fresh fruit & veg, raw meat & fish, plain milk, eggs, plain nuts |
+| **NOVA 2** | Processed culinary ingredients | Oils, butter, flour, sugar, salt, honey, plain vinegar |
+| **NOVA 3** | Processed foods | Canned veg, salted nuts, smoked/cured meat, fresh cheese |
+| **NOVA 4** | Ultra-processed | Soft drinks, chips, instant noodles, cereals with sugar, sausages, ice cream |
+
+**Setting a Level 1 category** automatically fills in that NOVA value for all children that have not been manually overridden (🔒).
+Children you override explicitly stay fixed until you click **Clear**.
+        """)
+
+    db = ProductViewDatabase()
+    try:
+        stats = db.get_nova_stats()
+        total = stats['total'] or 1
+        pct = round(100 * stats['tagged'] / total)
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Categories", stats['total'])
+        c2.metric("Tagged", stats['tagged'])
+        c3.metric("Untagged", stats['untagged'])
+        c4.metric("Progress", f"{pct}%")
+
+        st.divider()
+
+        cats = db.get_categories_with_nova()
+        cat_map = {c['category_id']: c for c in cats}
+        for c in cat_map.values():
+            c['_children'] = []
+        for c in cats:
+            pid = c.get('parent_category_id')
+            if pid and pid in cat_map:
+                cat_map[pid]['_children'].append(c)
+
+        root_cats = sorted(
+            [c for c in cats if not c.get('parent_category_id')],
+            key=lambda x: x.get('rimi_category_code') or ''
+        )
+
+        nova_opts = [
+            "— (unset)",
+            "1 · Unprocessed",
+            "2 · Culinary ingredients",
+            "3 · Processed",
+            "4 · Ultra-processed",
+        ]
+
+        def render_row(cat, is_level1: bool, depth: int = 0):
+            cat_id = cat['category_id']
+            nova = cat['nova_score']
+            explicit = cat['nova_score_explicit']
+            indent = "　" * depth
+
+            col_name, col_badge, col_sel, col_set, col_clr = st.columns([5, 1, 2, 1, 1])
+
+            with col_name:
+                lock = " 🔒" if explicit and not is_level1 else ""
+                inh = " _(inherited)_" if nova and not explicit else ""
+                if is_level1:
+                    st.markdown(f"{indent}**{cat['name_lv']}**{lock}")
+                else:
+                    st.markdown(f"{indent}{cat['name_lv']}{lock}{inh}")
+
+            with col_badge:
+                if nova:
+                    st.markdown(render_nova_badge(nova, explicit), unsafe_allow_html=True)
+                else:
+                    st.caption("—")
+
+            with col_sel:
+                default_idx = nova if nova else 0
+                st.selectbox(
+                    "NOVA score", nova_opts,
+                    index=default_idx,
+                    key=f"nova_sel_{cat_id}",
+                    label_visibility="collapsed"
+                )
+
+            with col_set:
+                btn_type = "primary" if is_level1 else "secondary"
+                if st.button("Set", key=f"nova_set_{cat_id}", type=btn_type, use_container_width=True):
+                    sel = st.session_state.get(f"nova_sel_{cat_id}", nova_opts[0])
+                    if sel == nova_opts[0]:
+                        st.toast("⚠️ Select a NOVA value first.")
+                    else:
+                        nv = int(sel[0])
+                        db.set_category_nova(cat_id, nv)
+                        n = db.cascade_nova_to_children(cat_id, nv)
+                        if n:
+                            st.toast(f"✅ NOVA {nv} set (cascaded to {n} children).")
+                        else:
+                            st.toast(f"✅ NOVA {nv} set.")
+                        st.rerun()
+
+            with col_clr:
+                if explicit:
+                    if st.button("Clear", key=f"nova_clr_{cat_id}", use_container_width=True):
+                        db.clear_category_nova_override(cat_id)
+                        st.rerun()
+
+        def render_children(children, depth: int):
+            for child in sorted(children, key=lambda x: x.get('rimi_category_code') or ''):
+                render_row(child, is_level1=False, depth=depth)
+                if child['_children']:
+                    render_children(child['_children'], depth + 1)
+
+        for root in root_cats:
+            root_nova = root['nova_score']
+            nova_label = f"NOVA {root_nova}" if root_nova else "—"
+            exp_label = f"[{nova_label}]  {root['name_lv']}  ({root.get('rimi_category_code', '')})"
+
+            with st.expander(exp_label, expanded=False):
+                render_row(root, is_level1=True, depth=0)
+                if root['_children']:
+                    st.divider()
+                    render_children(root['_children'], depth=1)
+
+    except Exception as e:
+        st.error(f"Error loading NOVA categories: {e}")
+        import traceback
+        with st.expander("Details"):
+            st.code(traceback.format_exc())
+    finally:
+        db.close()
+
+
+def section_category_processing():
+    """Section 1: Category Processing"""
+    st.header("📦 Category Processing")
+
+    tab_queue, tab_nova = st.tabs(["📥 Job Queue", "🔢 NOVA Classification"])
+
+    with tab_nova:
+        section_nova_categories()
+
+    with tab_queue:
+        _job_queue_section()
 
 
 def section_product_view():

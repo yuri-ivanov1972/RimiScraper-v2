@@ -21,7 +21,9 @@ CREATE TABLE normalized_categories (
     name_lv                 TEXT        NOT NULL,
     name_en                 TEXT,
     parent_category_id      INTEGER     REFERENCES normalized_categories (category_id),
-    level                   INTEGER     NOT NULL
+    level                   INTEGER     NOT NULL,
+    nova_score              INTEGER     CHECK (nova_score BETWEEN 1 AND 4),
+    nova_score_explicit     BOOLEAN     NOT NULL DEFAULT FALSE
 );
 
 
@@ -268,6 +270,9 @@ CREATE TABLE daily_update_logs (
 -- ============================================================
 -- INDEXES
 -- ============================================================
+
+-- normalized_categories
+CREATE INDEX idx_normalized_categories_nova ON normalized_categories (nova_score);
 
 -- products
 CREATE INDEX idx_products_sku         ON products (sku);

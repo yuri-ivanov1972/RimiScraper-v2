@@ -353,6 +353,120 @@ class ProductViewDatabase:
             
             return products, total
     
+    # ------------------------------------------------------------------
+    # NOVA classification helpers
+    # ------------------------------------------------------------------
+
+    def get_categories_with_nova(self) -> List[Dict]:
+        """Return all categories with nova_score and nova_score_explicit, ordered for tree display."""
+        self._ensure_connection()
+        query = """
+        SELECT
+            category_id,
+            rimi_category_code,
+            name_lv,
+            name_en,
+            level,
+            parent_category_id,
+            nova_score,
+            nova_score_explicit
+        FROM normalized_categories
+        ORDER BY rimi_category_code
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(query)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_nova_stats(self) -> Dict:
+        """Return summary counts: total categories, tagged, untagged."""
+        self._ensure_connection()
+        query = """
+        SELECT
+            COUNT(*)                                             AS total,
+            COUNT(*) FILTER (WHERE nova_score IS NOT NULL)      AS tagged,
+            COUNT(*) FILTER (WHERE nova_score IS NULL)          AS untagged,
+            COUNT(*) FILTER (WHERE nova_score_explicit = TRUE)  AS explicit
+        FROM normalized_categories
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(query)
+            return dict(cursor.fetchone())
+
+    def set_category_nova(self, category_id: int, nova_score: int) -> None:
+        """Set nova_score on a single category and mark it as explicitly set."""
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE normalized_categories
+                SET nova_score = %s, nova_score_explicit = TRUE
+                WHERE category_id = %s
+                """,
+                (nova_score, category_id)
+            )
+        self.connection.commit()
+
+    def cascade_nova_to_children(self, category_id: int, nova_score: int) -> int:
+        """
+        Recursively propagate nova_score to all descendants where
+        nova_score_explicit is NOT TRUE (i.e. not manually overridden).
+        Returns the number of rows updated.
+        """
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT category_id
+                    FROM normalized_categories
+                    WHERE parent_category_id = %s
+                    UNION ALL
+                    SELECT nc.category_id
+                    FROM normalized_categories nc
+                    JOIN descendants d ON nc.parent_category_id = d.category_id
+                )
+                UPDATE normalized_categories
+                SET nova_score = %s
+                WHERE category_id IN (SELECT category_id FROM descendants)
+                  AND (nova_score_explicit IS NOT TRUE)
+                """,
+                (category_id, nova_score)
+            )
+            updated = cursor.rowcount
+        self.connection.commit()
+        return updated
+
+    def clear_category_nova_override(self, category_id: int) -> None:
+        """
+        Clear the explicit override for a category.
+        Resets nova_score_explicit = FALSE and re-applies the parent's
+        nova_score (if available).
+        """
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE normalized_categories child
+                SET nova_score_explicit = FALSE,
+                    nova_score = parent.nova_score
+                FROM normalized_categories parent
+                WHERE child.category_id = %s
+                  AND parent.category_id = child.parent_category_id
+                """,
+                (category_id,)
+            )
+            if cursor.rowcount == 0:
+                # No parent found (root category) — just clear explicit flag and score
+                cursor.execute(
+                    """
+                    UPDATE normalized_categories
+                    SET nova_score_explicit = FALSE, nova_score = NULL
+                    WHERE category_id = %s
+                    """,
+                    (category_id,)
+                )
+        self.connection.commit()
+
     def close(self):
         """Close database connection"""
         if self.connection and not self.connection.closed:
