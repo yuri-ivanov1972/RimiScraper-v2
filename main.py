@@ -436,17 +436,31 @@ Children you override explicitly stay fixed until you click **Clear**.
             cat_id = cat['category_id']
             nova = cat['nova_score']
             explicit = cat['nova_score_explicit']
-            indent = "　" * depth
 
             col_name, col_badge, col_sel, col_set, col_clr = st.columns([5, 1, 2, 1, 1])
 
             with col_name:
-                lock = " 🔒" if explicit and not is_level1 else ""
-                inh = " _(inherited)_" if nova and not explicit else ""
+                lock_sym = " 🔒" if explicit and not is_level1 else ""
+                inh_html = " <em style='color:#888;font-size:0.85em'>(inherited)</em>" if nova and not explicit else ""
+                name = cat['name_lv']
+
                 if is_level1:
-                    st.markdown(f"{indent}**{cat['name_lv']}**{lock}")
+                    st.markdown(f"**{name}**")
+                elif depth == 1:
+                    # Level-2: bold, dark left border
+                    st.markdown(
+                        f'<div style="padding-left:10px;border-left:3px solid #888;margin:2px 0">'
+                        f'<strong>{name}</strong>{lock_sym}{inh_html}</div>',
+                        unsafe_allow_html=True
+                    )
                 else:
-                    st.markdown(f"{indent}{cat['name_lv']}{lock}{inh}")
+                    # Level-3+: lighter, progressively indented
+                    pad = 10 + (depth - 1) * 20
+                    st.markdown(
+                        f'<div style="padding-left:{pad}px;border-left:2px solid #ccc;margin:2px 0;font-size:0.92em;color:#333">'
+                        f'{name}{lock_sym}{inh_html}</div>',
+                        unsafe_allow_html=True
+                    )
 
             with col_badge:
                 if nova:
