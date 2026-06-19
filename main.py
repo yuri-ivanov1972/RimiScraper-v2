@@ -486,12 +486,9 @@ Children you override explicitly stay fixed until you click **Clear**.
                     else:
                         nv = int(sel[0])
                         db.set_category_nova(cat_id, nv)
-                        if is_level1:
-                            n = db.cascade_nova_to_children(cat_id, nv)
-                            if n:
-                                st.toast(f"✅ NOVA {nv} set (cascaded to {n} children).")
-                            else:
-                                st.toast(f"✅ NOVA {nv} set.")
+                        n = db.cascade_nova_to_children(cat_id, nv)
+                        if n:
+                            st.toast(f"✅ NOVA {nv} set (cascaded to {n} children).")
                         else:
                             st.toast(f"✅ NOVA {nv} set.")
                         st.rerun()
