@@ -494,9 +494,12 @@ Children you override explicitly stay fixed until you click **Clear**.
                         st.rerun()
 
             with col_clr:
-                if explicit:
+                if nova:
                     if st.button("Clear", key=f"nova_clr_{cat_id}", use_container_width=True):
-                        db.clear_category_nova_override(cat_id)
+                        if explicit:
+                            db.clear_category_nova_override(cat_id)
+                        else:
+                            db.unset_category_nova(cat_id)
                         st.rerun()
 
         def render_children(children, depth: int):

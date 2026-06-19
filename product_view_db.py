@@ -436,6 +436,20 @@ class ProductViewDatabase:
         self.connection.commit()
         return updated
 
+    def unset_category_nova(self, category_id: int) -> None:
+        """Completely remove nova_score from a category (sets to NULL, clears explicit flag)."""
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE normalized_categories
+                SET nova_score = NULL, nova_score_explicit = FALSE
+                WHERE category_id = %s
+                """,
+                (category_id,)
+            )
+        self.connection.commit()
+
     def clear_category_nova_override(self, category_id: int) -> None:
         """
         Clear the explicit override for a category.
