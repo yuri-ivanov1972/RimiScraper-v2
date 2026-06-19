@@ -358,35 +358,43 @@ class ProductViewDatabase:
     # ------------------------------------------------------------------
 
     def get_categories_with_nova(self) -> List[Dict]:
-        """Return all categories with nova_score and nova_score_explicit, ordered for tree display."""
+        """Return all categories with nova_score, nova_score_explicit, and direct product count."""
         self._ensure_connection()
         query = """
         SELECT
-            category_id,
-            rimi_category_code,
-            name_lv,
-            name_en,
-            level,
-            parent_category_id,
-            nova_score,
-            nova_score_explicit
-        FROM normalized_categories
-        ORDER BY rimi_category_code
+            nc.category_id,
+            nc.rimi_category_code,
+            nc.name_lv,
+            nc.name_en,
+            nc.level,
+            nc.parent_category_id,
+            nc.nova_score,
+            nc.nova_score_explicit,
+            COUNT(p.product_id) AS product_count
+        FROM normalized_categories nc
+        LEFT JOIN products p ON p.category_id = nc.category_id
+        GROUP BY nc.category_id, nc.rimi_category_code, nc.name_lv, nc.name_en,
+                 nc.level, nc.parent_category_id, nc.nova_score, nc.nova_score_explicit
+        ORDER BY nc.rimi_category_code
         """
         with self.connection.cursor() as cursor:
             cursor.execute(query)
             return [dict(row) for row in cursor.fetchall()]
 
     def get_nova_stats(self) -> Dict:
-        """Return summary counts: total categories, tagged, untagged."""
+        """Return summary counts for categories and products (tagged vs untagged)."""
         self._ensure_connection()
         query = """
         SELECT
-            COUNT(*)                                             AS total,
-            COUNT(*) FILTER (WHERE nova_score IS NOT NULL)      AS tagged,
-            COUNT(*) FILTER (WHERE nova_score IS NULL)          AS untagged,
-            COUNT(*) FILTER (WHERE nova_score_explicit = TRUE)  AS explicit
-        FROM normalized_categories
+            COUNT(DISTINCT nc.category_id)                                                          AS total,
+            COUNT(DISTINCT nc.category_id) FILTER (WHERE nc.nova_score IS NOT NULL)                AS tagged,
+            COUNT(DISTINCT nc.category_id) FILTER (WHERE nc.nova_score IS NULL)                    AS untagged,
+            COUNT(DISTINCT nc.category_id) FILTER (WHERE nc.nova_score_explicit = TRUE)            AS explicit,
+            COUNT(p.product_id)                                                                     AS total_products,
+            COUNT(p.product_id) FILTER (WHERE nc.nova_score IS NOT NULL)                           AS tagged_products,
+            COUNT(p.product_id) FILTER (WHERE nc.nova_score IS NULL)                               AS untagged_products
+        FROM normalized_categories nc
+        LEFT JOIN products p ON p.category_id = nc.category_id
         """
         with self.connection.cursor() as cursor:
             cursor.execute(query)

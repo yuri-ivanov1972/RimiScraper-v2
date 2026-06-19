@@ -399,14 +399,17 @@ Children you override explicitly stay fixed until you click **Clear**.
     db = ProductViewDatabase()
     try:
         stats = db.get_nova_stats()
-        total = stats['total'] or 1
-        pct = round(100 * stats['tagged'] / total)
+        total_cats = stats['total'] or 1
+        total_prods = stats['total_products'] or 1
+        cat_pct = round(100 * stats['tagged'] / total_cats)
+        prod_pct = round(100 * stats['tagged_products'] / total_prods)
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Categories", stats['total'])
-        c2.metric("Tagged", stats['tagged'])
-        c3.metric("Untagged", stats['untagged'])
-        c4.metric("Progress", f"{pct}%")
+        c1.metric("Categories tagged", f"{stats['tagged']} / {stats['total']}")
+        c2.metric("Categories untagged", stats['untagged'])
+        c3.metric("Category progress", f"{cat_pct}%")
+        c4.metric("Product progress", f"{prod_pct}%",
+                  help=f"{stats['tagged_products']:,} of {stats['total_products']:,} products are in a NOVA-tagged category")
 
         st.divider()
 
@@ -444,13 +447,22 @@ Children you override explicitly stay fixed until you click **Clear**.
                 inh_html = " <em style='color:#888;font-size:0.85em'>(inherited)</em>" if nova and not explicit else ""
                 name = cat['name_lv']
 
+                prod_count = cat.get('product_count') or 0
+                count_html = (
+                    f' <span style="color:#aaa;font-size:0.82em;font-weight:normal">({prod_count:,})</span>'
+                    if prod_count else ''
+                )
+
                 if is_level1:
-                    st.markdown(f"**{name}**")
+                    st.markdown(
+                        f'<div><strong>{name}</strong>{count_html}</div>',
+                        unsafe_allow_html=True
+                    )
                 elif depth == 1:
                     # Level-2: bold, dark left border
                     st.markdown(
                         f'<div style="padding-left:10px;border-left:3px solid #888;margin:2px 0">'
-                        f'<strong>{name}</strong>{lock_sym}{inh_html}</div>',
+                        f'<strong>{name}</strong>{lock_sym}{inh_html}{count_html}</div>',
                         unsafe_allow_html=True
                     )
                 else:
@@ -458,7 +470,7 @@ Children you override explicitly stay fixed until you click **Clear**.
                     pad = 10 + (depth - 1) * 20
                     st.markdown(
                         f'<div style="padding-left:{pad}px;border-left:2px solid #ccc;margin:2px 0;font-size:0.92em;color:#333">'
-                        f'{name}{lock_sym}{inh_html}</div>',
+                        f'{name}{lock_sym}{inh_html}{count_html}</div>',
                         unsafe_allow_html=True
                     )
 
