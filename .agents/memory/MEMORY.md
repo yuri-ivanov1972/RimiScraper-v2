@@ -1,0 +1,1 @@
+- [Unavailable product NULL price bug](unavailable-null-price.md) — lightweight_updater crashes on out-of-stock products; fix: carry forward old_price after DB fetch.

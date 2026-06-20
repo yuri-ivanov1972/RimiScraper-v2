@@ -1,0 +1,171 @@
+
+2026-06-20 13:57:38.45
+35e727d4
+User
+2026-06-20 10:57:38,454 - worker - INFO - 🔄 Incremental mode: classifying 13 SKUs...
+
+2026-06-20 13:57:38.62
+35e727d4
+User
+2026-06-20 10:57:38,628 - worker - INFO - ✨ New products: 0 (will do full scrape)
+
+2026-06-20 13:57:38.62
+35e727d4
+User
+2026-06-20 10:57:38,628 - worker - INFO - 🔄 Existing products: 13 (price update from listing)
+
+2026-06-20 13:57:38.62
+35e727d4
+User
+2026-06-20 10:57:38,628 - worker - INFO - ❌ Removed products: 1 (mark inactive)
+
+2026-06-20 13:57:38.83
+35e727d4
+User
+2026-06-20 10:57:38,836 - worker - INFO - 💰 Updating prices for 13 existing products from listing...
+
+2026-06-20 13:57:38.83
+35e727d4
+User
+2026-06-20 10:57:38,835 - worker - INFO - ✓ Marked 1 products as inactive
+
+2026-06-20 13:57:38.84
+35e727d4
+User
+2026-06-20 10:57:38,840 - worker - INFO - Collecting products with prices from category SH-11-1-2
+
+2026-06-20 13:57:38.84
+35e727d4
+User
+2026-06-20 10:57:38,841 - worker - INFO - Fetching category page: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 13:57:40.31
+35e727d4
+User
+2026-06-20 10:57:40,310 - worker - INFO - Fetching products from: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 13:57:41.97
+35e727d4
+User
+2026-06-20 10:57:41,973 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 13:57:41.97
+35e727d4
+User
+2026-06-20 10:57:41,973 - worker - INFO - Fetching products from: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 13:57:41.97
+35e727d4
+User
+2026-06-20 10:57:41,973 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 13:57:43.42
+35e727d4
+User
+2026-06-20 10:57:43,428 - worker - INFO - Using actual detected page size: 13
+
+2026-06-20 13:57:43.42
+35e727d4
+User
+2026-06-20 10:57:43,428 - worker - INFO - Found 13 products on first page
+
+2026-06-20 13:57:43.42
+35e727d4
+User
+2026-06-20 10:57:43,427 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 13:57:43.42
+35e727d4
+User
+2026-06-20 10:57:43,428 - worker - INFO - Detected page size: 13 products per page
+
+2026-06-20 13:57:43.45
+35e727d4
+User
+2026-06-20 10:57:43,455 - worker - INFO - Single page with 13 products
+
+2026-06-20 13:57:44.80
+35e727d4
+User
+2026-06-20 10:57:44,807 - worker - INFO - Fetching products from: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 13:57:47.33
+35e727d4
+User
+2026-06-20 10:57:47,335 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 13:57:47.33
+35e727d4
+User
+2026-06-20 10:57:47,335 - worker - INFO - Using actual detected page size: 13
+
+2026-06-20 13:57:47.33
+35e727d4
+User
+2026-06-20 10:57:47,336 - worker - INFO - Fetching products from: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 13:57:47.33
+35e727d4
+User
+2026-06-20 10:57:47,336 - worker - INFO - Processing page 1/1
+
+2026-06-20 13:57:47.33
+35e727d4
+User
+2026-06-20 10:57:47,335 - worker - INFO - Found 13 products on first page
+
+2026-06-20 13:57:47.33
+35e727d4
+User
+2026-06-20 10:57:47,336 - worker - INFO - Found 13 products across 1 pages
+
+2026-06-20 13:57:48.86
+35e727d4
+User
+2026-06-20 10:57:48,867 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 13:57:48.86
+35e727d4
+User
+2026-06-20 10:57:48,867 - worker - INFO - Page 1: Found 13 products
+
+2026-06-20 13:57:48.86
+35e727d4
+User
+2026-06-20 10:57:48,868 - worker - INFO - Category SH-11-1-2 complete: 13 unique products with prices
+
+2026-06-20 13:57:48.86
+35e727d4
+User
+2026-06-20 10:57:48,868 - worker - INFO - 📊 Found prices for 13/13 existing products
+
+2026-06-20 13:57:50.62
+35e727d4
+User
+2026-06-20 10:57:50,623 - worker - INFO - ✓ Price updates: 0 successful, 13 failed
+
+2026-06-20 13:57:50.62
+35e727d4
+User
+2026-06-20 10:57:50,623 - worker - INFO - 📈 Price changes detected: 0
+
+2026-06-20 13:57:53.14
+35e727d4
+User
+2026-06-20 10:57:53,149 - worker - INFO - ✓ No new products to scrape (all existing)
+
+2026-06-20 13:57:53.58
+35e727d4
+User
+2026-06-20 10:57:53,581 - worker - INFO - ✓ Job #15251 marked as completed
+
+
+2026-06-20 13:57:53.58
+35e727d4
+User
+2026-06-20 10:57:53,583 - worker - INFO - Batch processor closed 0 coordinator connections
+
+2026-06-20 13:57:53.78
+35e727d4
+User
+2026-06-20 10:57:53,780 - worker - INFO - Job #15251 completed: 0/13 successful

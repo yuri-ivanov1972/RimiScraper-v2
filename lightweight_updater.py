@@ -88,10 +88,10 @@ class LightweightUpdater:
             # Get availability from listing data (defaults to True if not provided for backward compatibility)
             is_available = listing_data.get('is_available', True)
             
-            # If price is None but product is unavailable, that's expected - keep price as NULL
-            # Don't use 0.0 as it would show up as a price change
+            # If price is None but product is unavailable, use last known price from DB
+            # (product_price_history.price is NOT NULL, so we cannot store NULL)
             if price is None and not is_available:
-                pass  # Keep price as None - will be stored as NULL in database
+                pass  # price will be resolved after we fetch old_price below
             elif price is None:
                 return {
                     'success': False,
@@ -136,7 +136,12 @@ class LightweightUpdater:
             old_price_per_unit = float(old_price_per_unit) if old_price_per_unit is not None else None
             old_discount_price = float(old_discount_price) if old_discount_price is not None else None
             old_discount_price_per_unit = float(old_discount_price_per_unit) if old_discount_price_per_unit is not None else None
-            
+
+            # Resolve price for unavailable products: carry forward last known price
+            # because product_price_history.price is NOT NULL and cannot store NULL
+            if price is None and not is_available:
+                price = old_price if old_price is not None else 0.0
+
             # Track changes - compare all price-related fields
             price_changed = (old_price != price) if old_price is not None else True
             
