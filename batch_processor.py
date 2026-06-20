@@ -392,7 +392,11 @@ class BatchProcessor:
                             
                             self.status_callback(f"  ✓ Price updates: {update_results['successful']} successful, {update_results['failed']} failed")
                             self.status_callback(f"  📈 Price changes detected: {update_results['price_changes']}")
-                            
+
+                            # Log actual error messages so failures are visible in worker logs
+                            for error_info in update_results.get('errors', []):
+                                self.status_callback(f"  ❌ SKU {error_info.get('sku')} failed: {error_info.get('error', 'Unknown error')}")
+
                             # Track successful and failed SKUs from update results
                             for error_info in update_results.get('errors', []):
                                 failed_sku = error_info.get('sku')
