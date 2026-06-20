@@ -366,11 +366,26 @@ class BatchProcessor:
                                     }
                         
                         self.status_callback(f"  📊 Found prices for {len(listing_data)}/{len(existing_skus)} existing products")
-                        
+
+                        # Sanity check: if every product in the listing came back as unavailable,
+                        # this is almost certainly a scraping failure (geo-block, bot detection, etc.)
+                        # rather than a genuine full-category stock-out. Skip availability updates
+                        # to avoid overwriting good data with bad scrape results.
+                        all_unavailable = (
+                            len(listing_data) > 0 and
+                            all(not v['is_available'] for v in listing_data.values())
+                        )
+                        if all_unavailable:
+                            self.status_callback(
+                                f"  ⚠️  All {len(listing_data)} products returned as unavailable — "
+                                f"possible geo-block or scrape failure. Skipping availability update."
+                            )
+                            listing_data = {}
+
                         # Batch update prices using lightweight updater
                         successful_skus = set()
                         failed_skus = set()
-                        
+
                         if listing_data:
                             updater = LightweightUpdater()
                             update_results = updater.batch_update_from_listing(listing_data)

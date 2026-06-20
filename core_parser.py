@@ -35,15 +35,16 @@ class RimiParser:
         self.session = self._create_session()
         
     def _create_session(self) -> requests.Session:
-        """Create session with headers to mimic browser"""
+        """Create session with headers to mimic a Latvian browser"""
         session = requests.Session()
         session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'lv-LV,lv;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
+            'Referer': 'https://www.rimi.lv/',
         })
         return session
     
@@ -369,11 +370,13 @@ class RimiParser:
                         if price_elem:
                             price = price_elem.get_text(strip=True)
                     
-                    # Check availability - product is unavailable if it has "show similar products" button
-                    # This button appears when product is out of stock instead of "add to cart"
+                    # Check availability - product is unavailable if it has "show similar products"
+                    # button AND has no price. Requiring both conditions avoids false negatives
+                    # caused by geo-restricted responses where the button may appear even for
+                    # products that are genuinely in stock.
                     is_available = True
                     similar_btn = element.select_one('.js-open-similar-products')
-                    if similar_btn:
+                    if similar_btn and not price:
                         is_available = False
                     
                     if sku and name:
