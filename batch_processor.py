@@ -6,6 +6,7 @@ Includes connection pooling, progress tracking, error recovery, and smart update
 import os
 import time
 import threading
+import json
 from typing import Dict, List, Optional, Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from update_coordinator import UpdateCoordinator
@@ -23,6 +24,22 @@ class BatchProcessor:
         self._all_coordinators = []  # Track all coordinators for cleanup
         self._lock = threading.Lock()
         
+    def _write_alarm_event(self, job_id: int, message: str, metadata: dict = None):
+        """Write a price_update_alarm event to job_events so it persists in the DB"""
+        try:
+            import psycopg2
+            db_url = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(db_url)
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO job_events (job_id, event_type, message, metadata)
+                VALUES (%s, 'price_update_alarm', %s, %s)
+            """, (job_id, message, json.dumps(metadata) if metadata else None))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"⚠️ Failed to write alarm event: {e}")
+
     def _get_coordinator(self, enhanced: bool = False) -> UpdateCoordinator:
         """Get or create a coordinator for the current thread - reuse per thread and type"""
         thread_id = threading.current_thread().ident
@@ -392,6 +409,23 @@ class BatchProcessor:
                             
                             self.status_callback(f"  ✓ Price updates: {update_results['successful']} successful, {update_results['failed']} failed")
                             self.status_callback(f"  📈 Price changes detected: {update_results['price_changes']}")
+
+                            # Task 1: Alarm when ALL price updates fail (0 successful, N failed)
+                            # This catches parser breakage, HTML changes, geo-blocks, etc.
+                            if update_results['successful'] == 0 and update_results['failed'] > 0:
+                                alarm_msg = (
+                                    f"🚨 ALARM: 0/{update_results['failed']} price updates succeeded for job {job_id}. "
+                                    f"This may indicate a scraper breakage (HTML change, geo-block, parser error). "
+                                    f"Check errors above for details."
+                                )
+                                self.status_callback(alarm_msg)
+                                self.status_callback("🚨 " * 5)
+                                self._write_alarm_event(job_id, alarm_msg, {
+                                    'successful': 0,
+                                    'failed': update_results['failed'],
+                                    'price_changes': update_results.get('price_changes', 0),
+                                    'first_errors': [e.get('error') for e in update_results.get('errors', [])[:3]]
+                                })
 
                             # Log actual error messages so failures are visible in worker logs
                             for error_info in update_results.get('errors', []):

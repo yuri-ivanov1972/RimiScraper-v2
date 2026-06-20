@@ -1199,6 +1199,211 @@ def section_nutrition_enrichment():
         st.code(traceback.format_exc())
 
 
+def _get_drought_status() -> dict:
+    """
+    Task 3: Check if there has been a price-update drought (0 price changes in last 7 days).
+    Returns dict with 'is_drought', 'days_since_last_price_change', 'last_price_change_date'.
+    """
+    try:
+        import psycopg2
+        db_url = os.environ['DATABASE_URL']
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+
+        cur.execute("""
+            SELECT MAX(recorded_at) AS last_update
+            FROM product_price_history
+        """)
+        row = cur.fetchone()
+        last_update = row[0] if row and row[0] else None
+
+        cur.execute("""
+            SELECT COALESCE(SUM(price_changed), 0) AS total_price_changes
+            FROM update_statistics
+            WHERE created_at >= NOW() - INTERVAL '7 days'
+        """)
+        row2 = cur.fetchone()
+        recent_price_changes = int(row2[0]) if row2 else 0
+
+        conn.close()
+
+        from datetime import datetime, timezone
+        if last_update:
+            if last_update.tzinfo is None:
+                last_update = last_update.replace(tzinfo=timezone.utc)
+            days_stale = (datetime.now(timezone.utc) - last_update).days
+        else:
+            days_stale = 9999
+
+        is_drought = days_stale >= 7 or recent_price_changes == 0
+        return {
+            'is_drought': is_drought,
+            'days_since_last_price_change': days_stale,
+            'last_price_change_date': last_update,
+            'recent_price_changes_7d': recent_price_changes,
+        }
+    except Exception as e:
+        return {'is_drought': False, 'error': str(e)}
+
+
+def section_worker_health():
+    """Tasks 3 & 4: Worker Health panel — staleness, job quality, recent alarms"""
+    st.header("🔔 Worker Health")
+
+    try:
+        import psycopg2
+        import pandas as pd
+        db_url = os.environ['DATABASE_URL']
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+
+        # ── Global staleness summary ──────────────────────────────────────────
+        cur.execute("""
+            WITH latest AS (
+                SELECT DISTINCT ON (p.product_id)
+                    p.product_id, pph.recorded_at
+                FROM products p
+                JOIN product_price_history pph ON pph.product_id = p.product_id
+                ORDER BY p.product_id, pph.recorded_at DESC
+            )
+            SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE recorded_at >= NOW() - INTERVAL '7 days')  AS updated_7d,
+                COUNT(*) FILTER (WHERE recorded_at >= NOW() - INTERVAL '30 days') AS updated_30d,
+                COUNT(*) FILTER (WHERE recorded_at >= NOW() - INTERVAL '90 days') AS updated_90d,
+                MAX(recorded_at) AS last_any_update
+            FROM latest
+        """)
+        row = cur.fetchone()
+        total, u7, u30, u90, last_update = row
+
+        st.subheader("📊 Price Data Freshness")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Products", total)
+        c2.metric("Updated < 7 days", u7, delta=f"{round(100*u7/total if total else 0, 1)}%")
+        c3.metric("Updated < 30 days", u30, delta=f"{round(100*u30/total if total else 0, 1)}%")
+        c4.metric("Updated < 90 days", u90, delta=f"{round(100*u90/total if total else 0, 1)}%")
+
+        if last_update:
+            from datetime import timezone
+            if last_update.tzinfo is None:
+                from datetime import timezone
+                last_update = last_update.replace(tzinfo=timezone.utc)
+            from datetime import datetime, timezone as tz
+            days_stale = (datetime.now(tz.utc) - last_update).days
+            freshness_label = f"Last price record: **{last_update.strftime('%Y-%m-%d')}** ({days_stale} days ago)"
+            if days_stale >= 14:
+                st.error(f"🚨 {freshness_label}")
+            elif days_stale >= 7:
+                st.warning(f"⚠️ {freshness_label}")
+            else:
+                st.success(f"✅ {freshness_label}")
+
+        st.divider()
+
+        # ── Recent alarms from job_events ─────────────────────────────────────
+        cur.execute("""
+            SELECT je.job_id, je.message, je.metadata, je.created_at,
+                   cpj.category_code
+            FROM job_events je
+            LEFT JOIN category_processing_jobs cpj ON cpj.id = je.job_id
+            WHERE je.event_type = 'price_update_alarm'
+            ORDER BY je.created_at DESC
+            LIMIT 20
+        """)
+        alarms = cur.fetchall()
+
+        st.subheader("🚨 Recent Price-Update Alarms")
+        if alarms:
+            for alarm in alarms:
+                job_id, message, metadata, created_at, cat_code = alarm
+                with st.expander(f"Job #{job_id} — {cat_code or 'unknown'} — {created_at.strftime('%Y-%m-%d %H:%M')}"):
+                    st.error(message)
+                    if metadata:
+                        import json as _json
+                        meta = metadata if isinstance(metadata, dict) else _json.loads(metadata)
+                        st.caption(f"Successful: {meta.get('successful', 0)}  |  Failed: {meta.get('failed', '?')}  |  Price changes: {meta.get('price_changes', 0)}")
+                        if meta.get('first_errors'):
+                            st.code('\n'.join(str(e) for e in meta['first_errors']), language=None)
+        else:
+            st.success("✅ No alarms recorded yet. Alarms will appear here when a job has 0 successful price updates.")
+
+        st.divider()
+
+        # ── Recent job quality (update_statistics) ────────────────────────────
+        cur.execute("""
+            SELECT us.job_id, us.category_code, us.total_checked,
+                   us.price_changed, us.data_updated, us.failed, us.created_at
+            FROM update_statistics us
+            ORDER BY us.created_at DESC
+            LIMIT 30
+        """)
+        stat_rows = cur.fetchall()
+
+        st.subheader("📋 Recent Job Results")
+        if stat_rows:
+            df = pd.DataFrame(stat_rows, columns=['Job ID', 'Category', 'Total Checked',
+                                                   'Price Changes', 'Updated', 'Failed', 'Recorded At'])
+            df['Recorded At'] = pd.to_datetime(df['Recorded At']).dt.strftime('%Y-%m-%d %H:%M')
+            df['Success Rate'] = df.apply(
+                lambda r: f"{round(100*(r['Updated'])/(r['Total Checked']) if r['Total Checked'] else 0, 0):.0f}%",
+                axis=1
+            )
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No job statistics yet — they will appear here after the next worker run.")
+
+        st.divider()
+
+        # ── Per-category staleness table ──────────────────────────────────────
+        cur.execute("""
+            WITH latest AS (
+                SELECT DISTINCT ON (p.product_id)
+                    p.product_id, p.category_id, pph.recorded_at, pph.data_source
+                FROM products p
+                JOIN product_price_history pph ON pph.product_id = p.product_id
+                ORDER BY p.product_id, pph.recorded_at DESC
+            ),
+            cat_stats AS (
+                SELECT
+                    nc.category_code,
+                    nc.name_lv,
+                    COUNT(l.product_id)           AS products,
+                    MAX(l.recorded_at)::date       AS last_update,
+                    EXTRACT(DAY FROM NOW() - MAX(l.recorded_at))::int AS days_stale
+                FROM latest l
+                JOIN normalized_categories nc ON nc.category_id = l.category_id
+                GROUP BY nc.category_code, nc.name_lv
+            )
+            SELECT category_code, name_lv, products, last_update, days_stale
+            FROM cat_stats
+            ORDER BY days_stale DESC NULLS FIRST
+        """)
+        cat_rows = cur.fetchall()
+
+        st.subheader("📂 Category Staleness")
+        if cat_rows:
+            df_cats = pd.DataFrame(cat_rows, columns=['Code', 'Category', 'Products', 'Last Updated', 'Days Stale'])
+
+            def highlight_stale(row):
+                if row['Days Stale'] is None or row['Days Stale'] >= 90:
+                    return ['background-color: #ffcccc'] * len(row)
+                elif row['Days Stale'] >= 30:
+                    return ['background-color: #fff3cd'] * len(row)
+                else:
+                    return [''] * len(row)
+
+            styled = df_cats.style.apply(highlight_stale, axis=1)
+            st.dataframe(styled, use_container_width=True, hide_index=True, height=400)
+        else:
+            st.info("No category data found.")
+
+        conn.close()
+
+    except Exception as e:
+        st.error(f"Error loading health data: {e}")
+
+
 def section_change_report():
     """Section 4: Change Report - Compare current vs previous product state"""
     st.header("📊 Change Report")
@@ -2212,8 +2417,21 @@ def section_ingredient_import():
 
 def main():
     st.title("🛒 Rimi Product Scraper")
-    
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
+
+    # Task 3: Price-drought global banner — shown on every page
+    # Only query once per session to avoid slowing down every rerun
+    if 'drought_status' not in st.session_state:
+        st.session_state.drought_status = _get_drought_status()
+    drought = st.session_state.drought_status
+    if drought.get('is_drought') and not drought.get('error'):
+        days = drought.get('days_since_last_price_change', '?')
+        st.error(
+            f"🚨 **Price-update drought detected** — last successful price record was "
+            f"**{days} days ago** (expected: within 7 days). "
+            f"The worker may be broken. Go to **🔔 Health** for details."
+        )
+
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     
     with col1:
         if st.button("📦 Categories", use_container_width=True, 
@@ -2250,6 +2468,14 @@ def main():
                      type="primary" if st.session_state.view_mode == 'ingredient_import' else "secondary"):
             st.session_state.view_mode = 'ingredient_import'
             st.rerun()
+
+    with col7:
+        health_label = "🔔 Health 🚨" if drought.get('is_drought') else "🔔 Health"
+        if st.button(health_label, use_container_width=True,
+                     type="primary" if st.session_state.view_mode == 'worker_health' else "secondary"):
+            st.session_state.drought_status = _get_drought_status()  # Refresh on click
+            st.session_state.view_mode = 'worker_health'
+            st.rerun()
     
     st.divider()
     
@@ -2263,6 +2489,8 @@ def main():
         section_nutriscore_recalculation()
     elif st.session_state.view_mode == 'ingredient_import':
         section_ingredient_import()
+    elif st.session_state.view_mode == 'worker_health':
+        section_worker_health()
     else:
         section_nutrition_enrichment()
 

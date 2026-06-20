@@ -360,6 +360,11 @@ class ProcessingWorker:
                           })
             
             self.logger.info(f"Job #{job_id} completed: {results['successful']}/{results['total_products']} successful")
+
+            # Task 2: Record per-job quality stats in update_statistics
+            # This table was designed for this purpose but was never populated.
+            # Having this data allows the health panel to show success/failure trends.
+            self._record_update_statistics(job_id, category_code, results)
             
         except Exception as e:
             self.logger.error(f"Error processing job #{job_id}: {e}")
@@ -396,6 +401,42 @@ class ProcessingWorker:
         finally:
             self.current_job_id = None
     
+    def _record_update_statistics(self, job_id: int, category_code: str, results: dict):
+        """
+        Task 2: Persist per-job quality stats into update_statistics.
+        Columns: job_id, category_code, total_checked, new_products,
+                 price_changed, availability_changed, data_updated, unchanged, failed
+        """
+        conn = None
+        try:
+            conn = self._get_db_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO update_statistics
+                    (job_id, category_code, total_checked, new_products,
+                     price_changed, availability_changed, data_updated, unchanged, failed)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                job_id,
+                category_code,
+                results.get('total_products', 0),
+                results.get('new_products', 0),
+                results.get('price_changes', 0),
+                0,  # availability_changed — not separately tracked yet
+                results.get('successful', 0),
+                max(0, results.get('total_products', 0) - results.get('successful', 0) - results.get('failed', 0)),
+                results.get('failed', 0),
+            ))
+            conn.commit()
+            self.logger.info(f"Recorded update_statistics for job #{job_id}")
+        except Exception as e:
+            self.logger.error(f"Failed to record update_statistics: {e}")
+            if conn:
+                conn.rollback()
+        finally:
+            if conn:
+                conn.close()
+
     def create_job(self, category_code: str, priority: int = 5):
         """Create a new job for a category"""
         conn = None
