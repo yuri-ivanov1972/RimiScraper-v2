@@ -290,7 +290,11 @@ class RimiParser:
                         price_tag = price_wrapper.select_one('.price-tag')
                         if price_tag:
                             price_parts = []
-                            main_span = price_tag.find('span')
+                            # Prefer aria-hidden span (visible digits only) over sr-only span
+                            # which contains full text like "1.45 € par gab." that breaks parsing
+                            main_span = price_tag.find('span', attrs={'aria-hidden': 'true'})
+                            if not main_span:
+                                main_span = price_tag.find('span')
                             if main_span:
                                 price_parts.append(main_span.get_text(strip=True))
                             
@@ -306,9 +310,11 @@ class RimiParser:
                         # Extract price per unit from .card__price-per (e.g., "4,02 €/kg")
                         price_per_elem = price_wrapper.select_one('.card__price-per')
                         if price_per_elem:
-                            price_per_text = price_per_elem.get_text(strip=True)
-                            # Parse "4,02 €/kg" into value and type
-                            per_match = re.match(r'([\d,\.]+)\s*€/(\w+)', price_per_text)
+                            # Prefer aria-hidden span; fall back to full text
+                            price_per_visible = price_per_elem.find('span', attrs={'aria-hidden': 'true'})
+                            price_per_text = price_per_visible.get_text(strip=True) if price_per_visible else price_per_elem.get_text(strip=True)
+                            # Use re.search (not re.match) in case sr-only text precedes the number
+                            per_match = re.search(r'([\d,\.]+)\s*€/(\w+)', price_per_text)
                             if per_match:
                                 price_per_unit = per_match.group(1).replace(',', '.')
                                 price_per_unit_type = per_match.group(2)
@@ -318,7 +324,9 @@ class RimiParser:
                         price_tag = element.select_one('.price-tag')
                         if price_tag:
                             price_parts = []
-                            main_span = price_tag.find('span')
+                            main_span = price_tag.find('span', attrs={'aria-hidden': 'true'})
+                            if not main_span:
+                                main_span = price_tag.find('span')
                             if main_span:
                                 price_parts.append(main_span.get_text(strip=True))
                             
@@ -347,9 +355,10 @@ class RimiParser:
                         # Extract discount price per unit from .price-per-unit
                         discount_per_elem = price_label.select_one('.price-per-unit')
                         if discount_per_elem:
-                            discount_per_text = discount_per_elem.get_text(strip=True)
-                            # Parse "0,75 €/kg" into value
-                            disc_match = re.match(r'([\d,\.]+)\s*€/\w+', discount_per_text)
+                            discount_per_visible = discount_per_elem.find('span', attrs={'aria-hidden': 'true'})
+                            discount_per_text = discount_per_visible.get_text(strip=True) if discount_per_visible else discount_per_elem.get_text(strip=True)
+                            # Use re.search so sr-only prefix text doesn't block the match
+                            disc_match = re.search(r'([\d,\.]+)\s*€/\w+', discount_per_text)
                             if disc_match:
                                 discount_price_per_unit = disc_match.group(1).replace(',', '.')
                     

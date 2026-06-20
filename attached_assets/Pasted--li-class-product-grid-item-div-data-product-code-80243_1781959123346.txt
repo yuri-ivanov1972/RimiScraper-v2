@@ -1,0 +1,221 @@
+<li class="product-grid__item">
+        <div data-product-code="802435"
+     class="js-product-container card
+           -horizontal-for-mobile
+     "
+     data-gtms-banner-title="Graudainais biezpiens Rimi 160g"
+     data-gtms-click-name="Graudainais biezpiens Rimi 160g"
+     data-gtm-click-name="Graudainais biezpiens Rimi 160g"
+     data-gtms-product-id="802435"
+          data-gtm-eec-product='{"id":"802435","name":"Graudainais biezpiens Rimi 160g","category":"SH-11-1-2","brand":null,"price":0.79,"currency":"EUR"}'
+     >
+    <a class="card__url js-gtm-eec-product-click" href="/e-veikals/lv/produkti/piena-produkti-un-olas/biezpiens/majas-siers/graudainais-biezpiens-rimi-160g/p/802435"
+       aria-labelledby="product-name-802435"></a>
+    <div class="label-badges">
+                            </div>
+    <div class="card__image-wrapper">
+        <div>
+            <img src="https://rimibaltic-res.cloudinary.com/image/upload/b_white,c_limit,dpr_auto,f_auto,h_216,q_1,w_216/d_ecommerce:backend-fallback.png/MAT_802435_PCE_LV"
+                 data-src="https://rimibaltic-res.cloudinary.com/image/upload/b_white,c_limit,dpr_auto,f_auto,q_auto:low,w_auto/d_ecommerce:backend-fallback.png/MAT_802435_PCE_LV"
+                 alt="Graudainais biezpiens Rimi 160g">
+                                                    <div class="type-badge -position-bottom-left">
+            <picture>
+            <source srcset="https://rimibaltic-web-res.cloudinary.com/image/upload/c_limit,dpr_auto,f_auto,h_48,q_auto:low,w_56/ecom-cms/03f78cc0071514728bd15887ee458ccd120ad185" media="(min-width: 768px)">
+                        <img src="https://rimibaltic-web-res.cloudinary.com/image/upload/c_limit,dpr_auto,f_auto,h_48,q_auto:low,w_56/ecom-cms/03f78cc0071514728bd15887ee458ccd120ad185"
+                 alt="Labākai dzīvei"
+                 data-title="Labākai dzīvei"
+                 class="js-tooltip"
+            >
+        </picture>
+    </div>
+<div class="type-badge -position-top-right">
+    </div>
+        </div>
+    </div>
+    <div class="card__details">
+                    
+                <p id="product-name-802435" class="card__name">Graudainais biezpiens Rimi 160g</p>
+        <div class="card__details-inner">
+            <div class="price-and-favorite">
+                <div class="price-and-carbon">
+                    <div class="card__price-wrapper">
+    
+        <div class="price-tag card__price">
+    <span class="sr-only">
+        0.79 €
+                    par gab.
+            </span>
+    <span aria-hidden="true">0</span>
+    <div aria-hidden="true">
+        <sup>79</sup>
+        <sub>€/gab.</sub>
+    </div>
+</div>
+        <div>
+
+            
+                            <p class="card__price-per">
+                    <span class="sr-only">
+                        Cena par vienību: 4,94 €/kg
+                    </span>
+                    <span aria-hidden="true">
+                        4,94
+                        €/kg
+                    </span>
+                </p>
+            
+        </div>
+    </div>
+
+
+
+                                            <div class="card__carbon-footprint">
+    <img src="/e-veikals/front/images/co2.CYcOH6-6.png" alt="Oglekļa pēda" width="18"
+         height="18">
+    <p><b>17,82</b> kg CO<sub>2</sub>e/kg</p>
+</div>
+
+                                    </div>
+
+                <form class="favorite card__favorite js-update-favorite "
+      action="/e-veikals/favorite/product/802435"
+>
+    <fieldset class="sr-only">
+        <legend>Pievienot favorītiem</legend>
+        <input type="checkbox"
+               name="favorite"
+               value=""
+               
+               aria-labelledby="update_favorite_802435"
+        >
+    </fieldset>
+    <button class="js-tooltip"
+            type="submit"
+            id="update_favorite_802435"
+            aria-label="Pievienot favorītiem"
+            data-title="Pievienot favorītiem"
+            data-add-name="Pievienot favorītiem"
+            data-remove-name="Pievienot favorītiem"
+            data-gtm-click-name="Pievienot favorītiem"
+    >
+        <span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+    <path d="M24 4l5.05 16L45 19.98l-12.83 8.79L36.98 44 24 34.71 11.02 44l4.81-15.23L3 19.98l15.95.02L24 4z"
+          fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2"/>
+</svg></span>
+    </button>
+</form>
+
+                            </div>
+
+            
+
+                            
+                <div class="actions">
+                    <form method="post" action="/e-veikals/cart/change"
+      class="js-add-to-cart card__cart-btn">
+    <input type="hidden" name="_method" value="put">    <input type="hidden" name="product" value="802435">
+    <input type="hidden" name="amount" value="1">
+    <button class="button -with-right-icon -cart gtm -small"
+            type="submit"
+            data-gtm-product-id="802435"
+            data-gtm-event-category="addToBasket"
+    >
+        Pievienot grozam
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><g fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2"><path d="M44 36H19.2c-3.9 0-7.2-2.8-7.9-6.6L6.5 1H0"/><path d="M8 9h39l-2.4 11.6c-.9 4.4-4.7 7.6-9.1 7.9l-24 1.5"/><circle cx="15.5" cy="43.5" r="3.5"/><circle cx="39.5" cy="43.5" r="3.5"/></g></svg>    </button>
+</form>
+
+                    <form class="counter  js-counter"
+      method="post"
+      action="/e-veikals/cart/change"
+>
+    <input type="hidden" name="_method" value="put">    <input type="hidden" name="step" value="1">
+    <input type="hidden" name="product" value="802435">
+    <button name="decrease"
+            class="counter__subtract js-subtract"
+            type="button"
+            aria-labelledby="cart-entry-decrease-802435"
+            data-gtm-ignore
+            id="cart-entry-decrease-802435"
+    >
+        <span class="sr-only">Samazināt Graudainais biezpiens Rimi 160g</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+    <path d="M8 24h32" fill="none" stroke="currentColor" stroke-width="2" stroke-miterlimit="10"/>
+</svg>    </button>
+    <input type="text" name="amount"
+           value="1"
+           min="1"
+           max="20"
+           data-amount="1"
+           data-unit="gab."
+           data-big-order-quantity="7"
+                                              data-inputmask="'regex': '(0)|([1-9]\\d*)', 'positionCaretOnClick': 'select'"
+                                                     aria-label="produkta daudzuma ievades lauka nosaukums"
+                      class="counter__input form-field__input"
+    >
+        <button name="increase"
+            class="counter__add js-add"
+            type="button"
+            data-gtm-ignore
+            aria-labelledby="cart-entry-increase-802435"
+            id="cart-entry-increase-802435"
+    >
+        <span class="sr-only">Palielināt Graudainais biezpiens Rimi 160g</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-miterlimit="10"><path d="M6 24h36M24 42V5.9"/></g>
+</svg>    </button>
+
+</form>
+
+                    <form class="js-delete-from-cart delete-form" method="post" action="/e-veikals/cart/change">
+    <input type="hidden" name="_method" value="put">    <input type="hidden" value="802435" name="product">
+    <button class="cart-card__delete js-delete js-remove-from-cart "
+            id="cart-entry-remove-802435"
+            aria-labelledby="cart-entry-remove-802435"
+    >
+        <span class="sr-only">Izņemt Graudainais biezpiens Rimi 160g</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+    <path d="M10 10l28 28m-28 0l28-28" fill="none" stroke="currentColor" stroke-width="2" stroke-miterlimit="10"/>
+</svg>    </button>
+</form>
+
+                    <form class="favorite card__favorite js-update-favorite "
+      action="/e-veikals/favorite/product/802435"
+>
+    <fieldset class="sr-only">
+        <legend>Pievienot favorītiem</legend>
+        <input type="checkbox"
+               name="favorite"
+               value=""
+               
+               aria-labelledby="update_favorite_802435"
+        >
+    </fieldset>
+    <button class="js-tooltip"
+            type="submit"
+            id="update_favorite_802435"
+            aria-label="Pievienot favorītiem"
+            data-title="Pievienot favorītiem"
+            data-add-name="Pievienot favorītiem"
+            data-remove-name="Pievienot favorītiem"
+            data-gtm-click-name="Pievienot favorītiem"
+    >
+        <span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+    <path d="M24 4l5.05 16L45 19.98l-12.83 8.79L36.98 44 24 34.71 11.02 44l4.81-15.23L3 19.98l15.95.02L24 4z"
+          fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="2"/>
+</svg></span>
+    </button>
+</form>
+                </div>
+                    </div>
+
+        <p class="card__error"
+           data-error-container
+           data-error-max-amount="Lai sanāk Tev un pārējiem, sasniegts maksimālais apjoms"
+           data-error-big-order-amount="Lai piedāvātu Tev izvēlēto daudzumu, mums vajadzēs nedaudz vairāk laika. Apskati piedāvātos laikus."
+        >
+        </p>
+
+    </div>
+
+    </div>
+    </li>

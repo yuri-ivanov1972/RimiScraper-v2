@@ -1,0 +1,176 @@
+
+2026-06-20 15:35:35.63
+89b4f6fc
+User
+2026-06-20 12:35:35,633 - worker - INFO - Using actual detected page size: 13
+
+2026-06-20 15:35:35.63
+89b4f6fc
+User
+2026-06-20 12:35:35,633 - worker - INFO - Detected page size: 13 products per page
+
+2026-06-20 15:35:35.63
+89b4f6fc
+User
+2026-06-20 12:35:35,633 - worker - INFO - Found 13 products on first page
+
+2026-06-20 15:35:35.65
+89b4f6fc
+User
+2026-06-20 12:35:35,657 - worker - INFO - Single page with 13 products
+
+2026-06-20 15:35:37.19
+89b4f6fc
+User
+2026-06-20 12:35:37,196 - worker - INFO - Fetching products from: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 15:35:38.54
+89b4f6fc
+User
+2026-06-20 12:35:38,544 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 15:35:38.54
+89b4f6fc
+User
+2026-06-20 12:35:38,545 - worker - INFO - Found 13 products on first page
+
+2026-06-20 15:35:38.54
+89b4f6fc
+User
+2026-06-20 12:35:38,545 - worker - INFO - Found 13 products across 1 pages
+
+2026-06-20 15:35:38.54
+89b4f6fc
+User
+2026-06-20 12:35:38,545 - worker - INFO - Processing page 1/1
+
+2026-06-20 15:35:38.54
+89b4f6fc
+User
+2026-06-20 12:35:38,545 - worker - INFO - Fetching products from: https://www.rimi.lv/e-veikals/lv/produkti/c/SH-11-1-2
+
+2026-06-20 15:35:38.54
+89b4f6fc
+User
+2026-06-20 12:35:38,545 - worker - INFO - Using actual detected page size: 13
+
+2026-06-20 15:35:40.03
+89b4f6fc
+User
+2026-06-20 12:35:40,033 - worker - INFO - Extracted 13 products from page
+
+2026-06-20 15:35:40.03
+89b4f6fc
+User
+2026-06-20 12:35:40,034 - worker - INFO - Page 1: Found 13 products
+
+2026-06-20 15:35:40.03
+89b4f6fc
+User
+2026-06-20 12:35:40,034 - worker - INFO - Category SH-11-1-2 complete: 13 unique products with prices
+
+2026-06-20 15:35:40.03
+89b4f6fc
+User
+2026-06-20 12:35:40,034 - worker - INFO - 📊 Found prices for 13/13 existing products
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 266629 failed: Could not parse price: €1.45 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 973544 failed: Could not parse price: €1.49 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 804887 failed: Could not parse price: €1.69 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..79
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..59
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ✓ Price updates: 0 successful, 13 failed
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..69
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 802435 failed: Could not parse price: €0.79 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - 📈 Price changes detected: 0
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 299262 failed: Could not parse price: €2.59 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..45
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 919187 failed: Could not parse price: €2.59 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..49
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..59
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..49
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..59
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,741 - worker - INFO - ❌ SKU 973543 failed: Could not parse price: €1.49 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+par gab..79
+
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,742 - worker - INFO - ❌ SKU 261444 failed: Could not parse price: €1.65 €
+
+2026-06-20 15:35:41.74
+89b4f6fc
+User
+2026-06-20 12:35:41,742 - worker - INFO - ❌ SKU 804870 failed: Could not parse price: €1.79 €
