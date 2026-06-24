@@ -68,11 +68,17 @@ def render_product_card(product: dict) -> None:
     else:
         st.markdown("<div style='background:#f0f0f0; height:150px; display:flex; align-items:center; justify-content:center;'>No Image</div>", unsafe_allow_html=True)
     
-    # Nutri-Score badge
+    # Nutri-Score + NOVA badges
+    badges = []
     nutri_grade = product.get('nutri_score_grade')
     if nutri_grade:
-        st.markdown(render_nutri_score_badge(nutri_grade), unsafe_allow_html=True)
-    
+        badges.append(render_nutri_score_badge(nutri_grade))
+    nova = product.get('nova_score')
+    if nova:
+        badges.append(render_nova_badge(nova, explicit=True))
+    if badges:
+        st.markdown(" ".join(badges), unsafe_allow_html=True)
+
     # Product name (clickable)
     product_name = product.get('name', 'Unknown Product')
     if st.button(f"**{product_name[:50]}**", key=f"prod_{product['product_id']}", use_container_width=True):
@@ -871,7 +877,16 @@ def render_product_detail_view():
             st.markdown(render_nutri_score_badge(product['nutri_score_grade']), unsafe_allow_html=True)
             if product.get('nutri_score_points') is not None:
                 st.caption(f"Punkti: {product['nutri_score_points']}")
-        
+
+        # NOVA score
+        if product.get('nova_score'):
+            st.markdown(render_nova_badge(product['nova_score'], explicit=True), unsafe_allow_html=True)
+            source = product.get('nova_source')
+            if source == 'additive_override':
+                st.caption("⚠️ NOVA 4 due to additives (avoid/limit)")
+            elif source == 'category_inherited':
+                st.caption("Inherited from category")
+
         # Price
         if product.get('price'):
             st.metric("Cena", f"€{product['price']:.2f}")

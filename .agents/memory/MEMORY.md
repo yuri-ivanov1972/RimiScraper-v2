@@ -1,2 +1,3 @@
 - [Rimi price scraping bugs](unavailable-null-price.md) — NULL price crash + Rimi HTML structure change caused 3 months of silent zero-progress worker runs; fixes in lightweight_updater.py, core_parser.py, batch_processor.py.
 - [Worker health monitoring](worker-health-monitoring.md) — update_statistics was empty, daily_update_logs unused, job_events metadata blank; 4-task alarm system added Jun 2026.
+- [Product NOVA classification](product-nova-classification.md) — nova_score + nova_source on products table; additive_override (avoid/limit) beats category_inherited; all 2966 products scored Jun 2026.

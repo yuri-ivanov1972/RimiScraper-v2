@@ -150,7 +150,9 @@ class ProductViewDatabase:
             nf.protein,
             nf.salt,
             nf.energy_kj,
-            pp.photo_url
+            pp.photo_url,
+            p.nova_score,
+            p.nova_source
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
@@ -240,7 +242,9 @@ class ProductViewDatabase:
             nf.salt,
             nf.fiber,
             nf.ingredients_text,
-            COALESCE(nf.nutrition_manual_edit, FALSE) as nutrition_manual_edit
+            COALESCE(nf.nutrition_manual_edit, FALSE) as nutrition_manual_edit,
+            p.nova_score,
+            p.nova_source
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
@@ -322,7 +326,9 @@ class ProductViewDatabase:
             nf.fat_total,
             nf.protein,
             nf.salt,
-            pp.photo_url
+            pp.photo_url,
+            p.nova_score,
+            p.nova_source
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
