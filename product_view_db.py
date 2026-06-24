@@ -406,6 +406,24 @@ class ProductViewDatabase:
             cursor.execute(query)
             return dict(cursor.fetchone())
 
+    def _sync_products_nova_in_category(self, cursor, category_id: int, nova_score) -> int:
+        """
+        Update nova_score on products that sit in category_id and inherited
+        their score from the category (nova_source = 'category_inherited').
+        nova_score=None sets the column to NULL.
+        Returns number of products updated.
+        """
+        cursor.execute(
+            """
+            UPDATE products
+            SET nova_score = %s
+            WHERE category_id = %s
+              AND nova_source = 'category_inherited'
+            """,
+            (nova_score, category_id)
+        )
+        return cursor.rowcount
+
     def set_category_nova(self, category_id: int, nova_score: int) -> None:
         """Set nova_score on a single category and mark it as explicitly set."""
         self._ensure_connection()
@@ -418,13 +436,16 @@ class ProductViewDatabase:
                 """,
                 (nova_score, category_id)
             )
+            self._sync_products_nova_in_category(cursor, category_id, nova_score)
         self.connection.commit()
 
     def cascade_nova_to_children(self, category_id: int, nova_score: int) -> int:
         """
         Recursively propagate nova_score to all descendants where
         nova_score_explicit is NOT TRUE (i.e. not manually overridden).
-        Returns the number of rows updated.
+        Returns the number of category rows updated.
+        Also updates products with nova_source='category_inherited' in all
+        affected categories.
         """
         self._ensure_connection()
         with self.connection.cursor() as cursor:
@@ -447,6 +468,29 @@ class ProductViewDatabase:
                 (category_id, nova_score)
             )
             updated = cursor.rowcount
+            # Mirror the same change on products in all affected categories
+            cursor.execute(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT category_id
+                    FROM normalized_categories
+                    WHERE parent_category_id = %s
+                    UNION ALL
+                    SELECT nc.category_id
+                    FROM normalized_categories nc
+                    JOIN descendants d ON nc.parent_category_id = d.category_id
+                )
+                UPDATE products
+                SET nova_score = %s
+                WHERE category_id IN (
+                    SELECT d.category_id FROM descendants d
+                    JOIN normalized_categories nc ON nc.category_id = d.category_id
+                    WHERE nc.nova_score_explicit IS NOT TRUE
+                )
+                  AND nova_source = 'category_inherited'
+                """,
+                (category_id, nova_score)
+            )
         self.connection.commit()
         return updated
 
@@ -462,6 +506,7 @@ class ProductViewDatabase:
                 """,
                 (category_id,)
             )
+            self._sync_products_nova_in_category(cursor, category_id, None)
         self.connection.commit()
 
     def clear_category_nova_override(self, category_id: int) -> None:
@@ -469,6 +514,7 @@ class ProductViewDatabase:
         Clear the explicit override for a category.
         Resets nova_score_explicit = FALSE and re-applies the parent's
         nova_score (if available).
+        Also syncs products with nova_source='category_inherited' in this category.
         """
         self._ensure_connection()
         with self.connection.cursor() as cursor:
@@ -493,6 +539,14 @@ class ProductViewDatabase:
                     """,
                     (category_id,)
                 )
+            # Sync products: read the new category score and apply it
+            cursor.execute(
+                "SELECT nova_score FROM normalized_categories WHERE category_id = %s",
+                (category_id,)
+            )
+            row = cursor.fetchone()
+            new_score = row[0] if row else None
+            self._sync_products_nova_in_category(cursor, category_id, new_score)
         self.connection.commit()
 
     def close(self):
