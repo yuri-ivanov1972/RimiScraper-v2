@@ -86,6 +86,28 @@ def main():
     row = dev_cur.fetchone()
     print(f"\nDev after sync: {row[1]}/{row[0]} categories have NOVA ({row[2]} explicitly set)")
 
+    # --- Sync products that inherited their NOVA from the category ---
+    print("\nSyncing product nova_score for nova_source='category_inherited'...")
+    dev_cur.execute("""
+        UPDATE products p
+        SET nova_score = nc.nova_score
+        FROM normalized_categories nc
+        WHERE p.category_id = nc.category_id
+          AND p.nova_source = 'category_inherited'
+    """)
+    products_updated = dev_cur.rowcount
+    dev_conn.commit()
+    print(f"✓ Products updated: {products_updated}")
+
+    dev_cur.execute("""
+        SELECT nova_score, COUNT(*) FROM products
+        WHERE nova_source = 'category_inherited'
+        GROUP BY nova_score ORDER BY nova_score
+    """)
+    print("  Breakdown (category_inherited):")
+    for score, cnt in dev_cur.fetchall():
+        print(f"    NOVA {score}: {cnt} products")
+
     prod_conn.close()
     dev_conn.close()
     print("\nDone.")
