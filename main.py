@@ -841,6 +841,89 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                 st.error(f"Kļūda saglabājot: {str(e)}")
 
 
+def render_nova_edit_form(db: 'ProductViewDatabase', product: dict):
+    """Render inline NOVA score override form for a product"""
+    product_id = product['product_id']
+    sku = product['sku']
+    current_nova = product.get('nova_score')
+    current_source = product.get('nova_source') or ''
+
+    NOVA_LABELS = {
+        1: "NOVA 1 — Unprocessed / minimally processed (fresh veg, eggs, plain milk)",
+        2: "NOVA 2 — Processed culinary ingredients (oil, butter, flour, sugar)",
+        3: "NOVA 3 — Processed foods (canned veg, smoked meat, fresh cheese)",
+        4: "NOVA 4 — Ultra-processed (soft drinks, chips, sausages, instant noodles)",
+    }
+
+    with st.form(key=f"nova_edit_{product_id}"):
+        st.markdown("**Select NOVA score:**")
+
+        options = list(NOVA_LABELS.values())
+        current_index = (current_nova - 1) if current_nova in (1, 2, 3, 4) else 0
+
+        selected_label = st.radio(
+            "NOVA score",
+            options=options,
+            index=current_index,
+            label_visibility="collapsed",
+            key=f"nova_radio_{product_id}"
+        )
+        selected_nova = options.index(selected_label) + 1
+
+        reset = st.checkbox(
+            "Reset to automatic (re-apply additive rule + category fallback)",
+            value=False,
+            key=f"nova_reset_{product_id}"
+        )
+
+        submitted = st.form_submit_button("💾 Save NOVA override", type="primary")
+
+        if submitted:
+            try:
+                db._ensure_connection()
+                with db.connection.cursor() as cur:
+                    if reset:
+                        # Re-apply the two-pass automatic classification for this product
+                        cur.execute("""
+                            SELECT COUNT(*) FROM ingredient_product_mapping ipm
+                            JOIN ingredient_analysis ia ON ia.id = ipm.ingredient_id
+                            WHERE ipm.product_sku = %s
+                              AND ia.suspicion_level IN ('avoid', 'limit')
+                        """, (sku,))
+                        additive_count = cur.fetchone()[0]
+
+                        if additive_count > 0:
+                            new_nova = 4
+                            new_source = 'additive_override'
+                        else:
+                            cur.execute("""
+                                SELECT nc.nova_score FROM products p
+                                JOIN normalized_categories nc ON nc.category_id = p.category_id
+                                WHERE p.product_id = %s
+                            """, (product_id,))
+                            row = cur.fetchone()
+                            new_nova = row[0] if row else None
+                            new_source = 'category_inherited'
+
+                        cur.execute("""
+                            UPDATE products SET nova_score = %s, nova_source = %s
+                            WHERE product_id = %s
+                        """, (new_nova, new_source, product_id))
+                        db.connection.commit()
+                        st.success(f"Reset to automatic: NOVA {new_nova} ({new_source})")
+                    else:
+                        cur.execute("""
+                            UPDATE products SET nova_score = %s, nova_source = 'manual_override'
+                            WHERE product_id = %s
+                        """, (selected_nova, product_id))
+                        db.connection.commit()
+                        old = current_nova or '?'
+                        st.success(f"Saved: NOVA {old} → NOVA {selected_nova} (manual override)")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error saving: {e}")
+
+
 def render_product_detail_view():
     """Render detailed product view (similar to reference app)"""
     
@@ -884,6 +967,8 @@ def render_product_detail_view():
             source = product.get('nova_source')
             if source == 'additive_override':
                 st.caption("⚠️ NOVA 4 due to additives (avoid/limit)")
+            elif source == 'manual_override':
+                st.caption("✏️ Manually overridden")
             elif source == 'category_inherited':
                 st.caption("Inherited from category")
 
@@ -943,7 +1028,10 @@ def render_product_detail_view():
     
     with st.expander("✏️ Rediģēt uzturvielu informāciju"):
         render_nutrition_edit_form(db, product)
-    
+
+    with st.expander("✏️ Override NOVA score"):
+        render_nova_edit_form(db, product)
+
     # Ingredients
     if product.get('ingredients_text'):
         st.subheader("📝 Sastāvdaļas")
