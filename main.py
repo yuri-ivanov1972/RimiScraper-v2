@@ -1321,12 +1321,15 @@ def _get_drought_status() -> dict:
         last_update = row[0] if row and row[0] else None
 
         cur.execute("""
-            SELECT COALESCE(SUM(price_changed), 0) AS total_price_changes
+            SELECT
+                COALESCE(SUM(price_changed), 0) AS total_price_changes,
+                COUNT(*) AS worker_runs
             FROM update_statistics
             WHERE created_at >= NOW() - INTERVAL '7 days'
         """)
         row2 = cur.fetchone()
         recent_price_changes = int(row2[0]) if row2 else 0
+        worker_runs_7d = int(row2[1]) if row2 else 0
 
         conn.close()
 
@@ -1338,7 +1341,11 @@ def _get_drought_status() -> dict:
         else:
             days_stale = 9999
 
-        is_drought = days_stale >= 7 or recent_price_changes == 0
+        # Only flag zero price changes as a drought when workers have actually
+        # been running (rows exist in update_statistics). An empty table means
+        # worker stats haven't been collected yet — not a drought.
+        worker_ran_but_zero = (worker_runs_7d > 0 and recent_price_changes == 0)
+        is_drought = days_stale >= 7 or worker_ran_but_zero
         return {
             'is_drought': is_drought,
             'days_since_last_price_change': days_stale,
