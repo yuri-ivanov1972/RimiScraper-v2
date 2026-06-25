@@ -546,10 +546,21 @@ class EnhancedDatabaseUpdater:
                 # Check if any ingredients were processed (the correct key is 'processed', not 'success')
                 if result.get('processed', 0) > 0:
                     self.status_callback(f"Successfully processed {result.get('processed', 0)} ingredients")
-                    return True
                 else:
                     self.status_callback(f"No ingredients could be processed from text: '{ingredients_text[:50]}...' - this may be normal for basic products")
-                    return True  # Still return success - extraction worked, just no valid ingredients
+
+                # Assign NOVA score now that all ingredient suspicion levels are set
+                try:
+                    from nova_calculator import assign_nova_score
+                    nova_result = assign_nova_score(self.conn, product_id, sku)
+                    if not nova_result['skipped']:
+                        self.status_callback(
+                            f"NOVA assigned: {nova_result['nova_score']} ({nova_result['nova_source']})"
+                        )
+                except Exception as nova_exc:
+                    self.status_callback(f"NOVA assignment skipped: {nova_exc}")
+
+                return True
                     
             except ImportError:
                 self.status_callback("Ingredient processor not available")
