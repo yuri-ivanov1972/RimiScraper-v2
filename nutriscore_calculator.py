@@ -160,6 +160,7 @@ BEVERAGE_CATEGORIES = {
     'SH-11-3-9',   # Other fermented drinks
     'SH-11-2-5',   # Dzeramais jogurts - drinking yogurt
     'SH-4-14-93',  # Kokosa piens (coconut milk) - plant drink
+    'SH-11-10-2',  # Augu dzērieni (plant-based drinks)
 }
 
 LATVIAN_SWEETENER_INDICATORS = [
