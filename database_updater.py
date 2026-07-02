@@ -261,6 +261,7 @@ class DatabaseUpdater:
                     salt=salt,
                     protein=protein,
                     fiber=int(fiber) if fiber else 0,
+                    total_fat=fat_total,
                     category_code=category_code
                 )
                 

@@ -1986,6 +1986,7 @@ def recalculate_nutriscore_for_product(db: ProductViewDatabase, sku: str):
             p.name,
             nc.rimi_category_code as category_code,
             nf.energy_kj,
+            nf.fat_total,
             nf.carbs_sugars as sugars,
             nf.fat_saturated as saturated_fat,
             nf.salt,
@@ -2034,6 +2035,7 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
             salt=float(product['salt']),
             protein=float(product['protein']),
             fiber=fiber_float,
+            total_fat=float(product['fat_total']) if product.get('fat_total') else None,
             category_code=product.get('category_code'),
             product_name=product.get('name'),
             ingredients_text=product.get('ingredients_text')
@@ -2148,6 +2150,7 @@ def section_fiber_estimation():
                         nc.rimi_category_code as category_code,
                         nf.fiber,
                         nf.energy_kj,
+                        nf.fat_total,
                         nf.carbs_sugars,
                         nf.fat_saturated,
                         nf.salt,
@@ -2198,6 +2201,7 @@ def section_fiber_estimation():
                         salt=float(product['salt']),
                         protein=float(product['protein']),
                         fiber=new_fiber,
+                        total_fat=float(product['fat_total']) if product.get('fat_total') else None,
                         category_code=product.get('category_code'),
                         product_name=product.get('name'),
                         ingredients_text=product.get('ingredients_text')
@@ -2218,6 +2222,7 @@ def section_fiber_estimation():
                 'before_grade': product.get('current_grade'),
                 'new_grade': new_grade,
                 'energy_kj': product.get('energy_kj'),
+                'fat_total': product.get('fat_total'),
                 'sugars': product.get('carbs_sugars'),
                 'saturated_fat': product.get('fat_saturated'),
                 'salt': product.get('salt'),
@@ -2277,6 +2282,7 @@ def section_fiber_estimation():
                         salt=float(result['salt']),
                         protein=float(result['protein']),
                         fiber=new_fiber,
+                        total_fat=float(result['fat_total']) if result.get('fat_total') else None,
                         category_code=result['category'],
                         product_name=result.get('name'),
                         ingredients_text=result.get('ingredients_text')
