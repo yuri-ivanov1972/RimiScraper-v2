@@ -787,6 +787,7 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                     salt=salt,
                     protein=protein,
                     fiber=fiber,
+                    total_fat=fat_total,
                     category_code=product.get('rimi_category_code'),
                     product_name=product.get('name'),
                     ingredients_text=product.get('ingredients_text')
