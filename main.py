@@ -1946,6 +1946,7 @@ def get_products_for_nutriscore_recalc(db: ProductViewDatabase, category_code: s
             p.name,
             nc.rimi_category_code as category_code,
             nf.energy_kj,
+            nf.fat_total,
             nf.carbs_sugars as sugars,
             nf.fat_saturated as saturated_fat,
             nf.salt,
