@@ -551,14 +551,30 @@ class ProductViewDatabase:
         self.connection.commit()
 
     def set_product_hidden(self, product_id: int, is_hidden: bool) -> bool:
-        """Set the is_hidden flag on a product."""
+        """Set the is_hidden flag on a product and immediately insert a price_history row."""
         self._ensure_connection()
         try:
             with self.connection.cursor() as cursor:
+                # Update the flag
                 cursor.execute(
                     "UPDATE products SET is_hidden = %s, updated_at = CURRENT_TIMESTAMP WHERE product_id = %s",
                     (is_hidden, product_id)
                 )
+                # Fetch the latest known price to carry forward
+                cursor.execute("""
+                    SELECT price FROM product_price_history
+                    WHERE product_id = %s
+                    ORDER BY recorded_at DESC
+                    LIMIT 1
+                """, (product_id,))
+                row = cursor.fetchone()
+                if row:
+                    last_price = row[0]
+                    cursor.execute("""
+                        INSERT INTO product_price_history
+                            (product_id, price, is_available, data_source, recorded_at)
+                        VALUES (%s, %s, %s, 'visibility_override', CURRENT_TIMESTAMP)
+                    """, (product_id, last_price, not is_hidden))
             self.connection.commit()
             return True
         except Exception as e:
