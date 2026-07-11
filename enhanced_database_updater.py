@@ -188,6 +188,10 @@ class EnhancedDatabaseUpdater:
                 if price_decimal is not None:
                     # Use explicit is_available from product_data if provided, otherwise derive from price
                     is_available = product_data.get('is_available', price_decimal > 0)
+                    # Override availability for hidden products
+                    if existing_product.get('is_hidden'):
+                        is_available = False
+                        self.status_callback(f"Product {sku} is hidden — forcing is_available=False")
                     
                     # Parse new price fields from product_data
                     price_per_unit = None

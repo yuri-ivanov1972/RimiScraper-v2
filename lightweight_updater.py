@@ -104,6 +104,7 @@ class LightweightUpdater:
                 SELECT 
                     p.product_id,
                     p.name,
+                    p.is_hidden,
                     pph.price,
                     pph.is_available,
                     pph.price_per_unit,
@@ -130,7 +131,7 @@ class LightweightUpdater:
                     'error': 'Product not found in database'
                 }
             
-            (product_id, product_name, old_price, old_availability,
+            (product_id, product_name, product_is_hidden, old_price, old_availability,
              old_price_per_unit, old_price_per_unit_type, old_discount_price, old_discount_price_per_unit) = row
             old_price = float(old_price) if old_price is not None else None
             old_price_per_unit = float(old_price_per_unit) if old_price_per_unit is not None else None
@@ -160,6 +161,10 @@ class LightweightUpdater:
                 discount_price_changed or discount_price_per_unit_changed
             )
             
+            # Override availability for hidden products
+            if product_is_hidden:
+                is_available = False
+
             # Insert new price history record if any price-related data changed
             if any_price_data_changed:
                 cur.execute("""

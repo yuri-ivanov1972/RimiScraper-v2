@@ -481,6 +481,11 @@ class DatabaseUpdater:
                 except:
                     pass
             
+            # Override availability for hidden products
+            if product.get('is_hidden'):
+                is_available = False
+                self.status_callback(f"Product {sku} is hidden — forcing is_available=False")
+
             # Add price history record with new fields
             self._add_price_history_record(
                 product_id, price_decimal, is_available, 'rimi_scraper',

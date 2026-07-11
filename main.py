@@ -976,6 +976,24 @@ def render_product_detail_view():
         # Price
         if product.get('price'):
             st.metric("Cena", f"€{product['price']:.2f}")
+
+        # Visibility toggle
+        is_hidden = product.get('is_hidden', False)
+        if is_hidden:
+            st.error("🚫 Hidden (unavailable to external projects)")
+            if st.button("Unhide Product", type="secondary"):
+                if db.set_product_hidden(product['product_id'], False):
+                    st.success("Product is now visible.")
+                    st.rerun()
+                else:
+                    st.error("Failed to unhide product.")
+        else:
+            if st.button("Hide Product", type="secondary"):
+                if db.set_product_hidden(product['product_id'], True):
+                    st.success("Product hidden. Future scrapes will record is_available=False.")
+                    st.rerun()
+                else:
+                    st.error("Failed to hide product.")
     
     st.divider()
     

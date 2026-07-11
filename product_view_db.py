@@ -244,7 +244,8 @@ class ProductViewDatabase:
             nf.ingredients_text,
             COALESCE(nf.nutrition_manual_edit, FALSE) as nutrition_manual_edit,
             p.nova_score,
-            p.nova_source
+            p.nova_source,
+            p.is_hidden
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
@@ -548,6 +549,21 @@ class ProductViewDatabase:
             new_score = row[0] if row else None
             self._sync_products_nova_in_category(cursor, category_id, new_score)
         self.connection.commit()
+
+    def set_product_hidden(self, product_id: int, is_hidden: bool) -> bool:
+        """Set the is_hidden flag on a product."""
+        self._ensure_connection()
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE products SET is_hidden = %s, updated_at = CURRENT_TIMESTAMP WHERE product_id = %s",
+                    (is_hidden, product_id)
+                )
+            self.connection.commit()
+            return True
+        except Exception as e:
+            self.connection.rollback()
+            return False
 
     def close(self):
         """Close database connection"""
