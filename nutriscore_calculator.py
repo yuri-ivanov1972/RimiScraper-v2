@@ -148,9 +148,11 @@ BEVERAGE_CATEGORIES = {
     'SH-5-11',     # Dzērieni - Svaigas sulas un smūtiji
     'SH-5-11-1',   # Dzērieni - Svaigas sulas - Augļu sulas un smūtiji
     'SH-5-11-2',   # Dzērieni - Svaigas sulas - Dārzeņu sulas un smūtiji
+    'SH-5-12',     # Dzērieni - Ūdens (parent category)
     'SH-5-12-18',  # Dzērieni - Ūdens - Gāzēts ūdens
     'SH-5-12-19',  # Dzērieni - Ūdens - Negāzēts ūdens
     'SH-5-12-20',  # Dzērieni - Ūdens - Ūdens ar garšām
+    'SH-12-1-1',   # Ledus (ice cubes — frozen water, zero nutrition → grade A)
     'SH-11-8-1',   # Pilnpiens (whole milk)
     'SH-11-8-2',   # Other milk
     'SH-11-8-22',  # Pasterizēts piens (pasteurized milk)
