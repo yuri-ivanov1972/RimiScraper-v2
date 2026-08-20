@@ -1,6 +1,6 @@
 -- ============================================================
--- Rimi Product Scraper — Database Schema
--- Generated from production database
+-- Rimi Product Scraper — Database Bootstrap Schema
+-- Authoritative empty-schema definition; does not include source data
 -- ============================================================
 
 -- Required extension for trigram full-text search on product names
@@ -15,7 +15,7 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 -- normalized_categories
 -- Hierarchical category tree (level 1 = top, level 2 = sub)
 -- -----------------------------------------------------------
-CREATE TABLE normalized_categories (
+CREATE TABLE IF NOT EXISTS normalized_categories (
     category_id             INTEGER PRIMARY KEY,
     rimi_category_code      TEXT UNIQUE,
     name_lv                 TEXT        NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE normalized_categories (
 -- products
 -- One row per scraped product (SKU is the business key)
 -- -----------------------------------------------------------
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     product_id          SERIAL PRIMARY KEY,
     sku                 TEXT        NOT NULL UNIQUE,
     name                TEXT        NOT NULL,
@@ -47,7 +47,10 @@ CREATE TABLE products (
     needs_enrichment    BOOLEAN              DEFAULT FALSE,
     enrichment_reviewed BOOLEAN              DEFAULT FALSE,
     enrichment_skipped      BOOLEAN              DEFAULT FALSE,
-    has_confirmed_match     BOOLEAN              DEFAULT FALSE
+    has_confirmed_match     BOOLEAN              DEFAULT FALSE,
+    nova_score              INTEGER              CHECK (nova_score BETWEEN 1 AND 4),
+    nova_source             VARCHAR(30),
+    is_hidden               BOOLEAN      NOT NULL DEFAULT FALSE
 );
 
 
@@ -56,7 +59,7 @@ CREATE TABLE products (
 -- One row per product (1-to-1 via product_id)
 -- Stores all per-100g nutritional values + Nutri-Score result
 -- -----------------------------------------------------------
-CREATE TABLE nutritionfacts (
+CREATE TABLE IF NOT EXISTS nutritionfacts (
     nutrition_id            SERIAL PRIMARY KEY,
     product_id              INTEGER     NOT NULL UNIQUE REFERENCES products (product_id),
     ingredients_text        TEXT,
@@ -83,7 +86,7 @@ CREATE TABLE nutritionfacts (
 -- Append-only price/availability log (never UPDATE — INSERT only)
 -- Use DISTINCT ON (product_id) ORDER BY recorded_at DESC for current price
 -- -----------------------------------------------------------
-CREATE TABLE product_price_history (
+CREATE TABLE IF NOT EXISTS product_price_history (
     price_history_id        SERIAL PRIMARY KEY,
     product_id              INTEGER         NOT NULL REFERENCES products (product_id),
     price                   NUMERIC(10, 2)  NOT NULL,
@@ -103,7 +106,7 @@ CREATE TABLE product_price_history (
 -- productphotos
 -- One or more photo URLs per product (is_primary = main image)
 -- -----------------------------------------------------------
-CREATE TABLE productphotos (
+CREATE TABLE IF NOT EXISTS productphotos (
     photo_id    SERIAL PRIMARY KEY,
     product_id  INTEGER NOT NULL REFERENCES products (product_id),
     photo_url   TEXT    NOT NULL,
@@ -118,7 +121,7 @@ CREATE TABLE productphotos (
 -- category: 'natural' | 'processed' | 'uncategorized'
 -- suspicion_level: 'avoid' | 'limit' | 'caution' | 'clean'
 -- -----------------------------------------------------------
-CREATE TABLE ingredient_analysis (
+CREATE TABLE IF NOT EXISTS ingredient_analysis (
     id                  SERIAL PRIMARY KEY,
     ingredient          TEXT        NOT NULL UNIQUE,
     frequency           INTEGER     NOT NULL,
@@ -136,7 +139,7 @@ CREATE TABLE ingredient_analysis (
 -- ingredient_product_mapping
 -- Many-to-many: ingredient_analysis <-> products (by SKU)
 -- -----------------------------------------------------------
-CREATE TABLE ingredient_product_mapping (
+CREATE TABLE IF NOT EXISTS ingredient_product_mapping (
     ingredient_id   INTEGER     NOT NULL REFERENCES ingredient_analysis (id),
     product_sku     TEXT        NOT NULL REFERENCES products (sku),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -150,7 +153,7 @@ CREATE TABLE ingredient_product_mapping (
 -- status: 'queued' | 'in_progress' | 'completed' | 'failed'
 -- update_mode: 'full' | 'incremental'
 -- -----------------------------------------------------------
-CREATE TABLE category_processing_jobs (
+CREATE TABLE IF NOT EXISTS category_processing_jobs (
     id                  SERIAL PRIMARY KEY,
     category_code       VARCHAR(50)  NOT NULL,
     category_id         INTEGER,
@@ -178,7 +181,7 @@ CREATE TABLE category_processing_jobs (
 -- processing_workers
 -- Registry of active background worker processes
 -- -----------------------------------------------------------
-CREATE TABLE processing_workers (
+CREATE TABLE IF NOT EXISTS processing_workers (
     id              SERIAL PRIMARY KEY,
     worker_id       VARCHAR(100) NOT NULL UNIQUE,
     hostname        VARCHAR(255),
@@ -196,7 +199,7 @@ CREATE TABLE processing_workers (
 -- job_events
 -- Append-only event log for each processing job
 -- -----------------------------------------------------------
-CREATE TABLE job_events (
+CREATE TABLE IF NOT EXISTS job_events (
     id          SERIAL PRIMARY KEY,
     job_id      INTEGER      NOT NULL REFERENCES category_processing_jobs (id),
     event_type  VARCHAR(50)  NOT NULL,
@@ -210,7 +213,7 @@ CREATE TABLE job_events (
 -- product_processing_log
 -- Per-SKU result log for each job run
 -- -----------------------------------------------------------
-CREATE TABLE product_processing_log (
+CREATE TABLE IF NOT EXISTS product_processing_log (
     id              SERIAL PRIMARY KEY,
     job_id          INTEGER      NOT NULL REFERENCES category_processing_jobs (id),
     sku             VARCHAR(50)  NOT NULL,
@@ -224,7 +227,7 @@ CREATE TABLE product_processing_log (
 -- update_statistics
 -- Aggregated counters per job/category run
 -- -----------------------------------------------------------
-CREATE TABLE update_statistics (
+CREATE TABLE IF NOT EXISTS update_statistics (
     id                      SERIAL PRIMARY KEY,
     job_id                  INTEGER      NOT NULL REFERENCES category_processing_jobs (id),
     category_code           VARCHAR(50)  NOT NULL,
@@ -243,7 +246,7 @@ CREATE TABLE update_statistics (
 -- daily_update_logs
 -- One summary row per scheduled daily update run
 -- -----------------------------------------------------------
-CREATE TABLE daily_update_logs (
+CREATE TABLE IF NOT EXISTS daily_update_logs (
     id                      SERIAL PRIMARY KEY,
     update_type             VARCHAR(50)  NOT NULL DEFAULT 'daily',
     start_time              TIMESTAMP    NOT NULL,
@@ -271,79 +274,86 @@ CREATE TABLE daily_update_logs (
 -- INDEXES
 -- ============================================================
 
+-- These additive statements keep the bootstrap safe for databases created
+-- from an earlier version of this schema.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS nova_score INTEGER CHECK (nova_score BETWEEN 1 AND 4),
+    ADD COLUMN IF NOT EXISTS nova_source VARCHAR(30),
+    ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- normalized_categories
-CREATE INDEX idx_normalized_categories_nova ON normalized_categories (nova_score);
+CREATE INDEX IF NOT EXISTS idx_normalized_categories_nova ON normalized_categories (nova_score);
 
 -- products
-CREATE INDEX idx_products_sku         ON products (sku);
-CREATE INDEX idx_products_category_id ON products (category_id);
-CREATE INDEX idx_products_name        ON products USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_products_sku         ON products (sku);
+CREATE INDEX IF NOT EXISTS idx_products_category_id ON products (category_id);
+CREATE INDEX IF NOT EXISTS idx_products_name        ON products USING gin (name gin_trgm_ops);
 
 -- nutritionfacts
-CREATE INDEX idx_nutrition_product_id  ON nutritionfacts (product_id);
-CREATE INDEX idx_nutrition_nutri_score ON nutritionfacts (nutri_score_grade);
-CREATE INDEX idx_nutrition_protein     ON nutritionfacts (protein);
-CREATE INDEX idx_nutrition_carbs_sugars ON nutritionfacts (carbs_sugars);
+CREATE INDEX IF NOT EXISTS idx_nutrition_product_id  ON nutritionfacts (product_id);
+CREATE INDEX IF NOT EXISTS idx_nutrition_nutri_score ON nutritionfacts (nutri_score_grade);
+CREATE INDEX IF NOT EXISTS idx_nutrition_protein     ON nutritionfacts (protein);
+CREATE INDEX IF NOT EXISTS idx_nutrition_carbs_sugars ON nutritionfacts (carbs_sugars);
 
 -- product_price_history
-CREATE INDEX idx_price_history_product_id       ON product_price_history (product_id);
-CREATE INDEX idx_price_history_recorded_at      ON product_price_history (recorded_at);
-CREATE INDEX idx_price_history_product_recorded ON product_price_history (product_id, recorded_at);
-CREATE INDEX idx_price_history_availability     ON product_price_history (is_available);
-CREATE INDEX idx_price_history_data_source      ON product_price_history (data_source);
+CREATE INDEX IF NOT EXISTS idx_price_history_product_id       ON product_price_history (product_id);
+CREATE INDEX IF NOT EXISTS idx_price_history_recorded_at      ON product_price_history (recorded_at);
+CREATE INDEX IF NOT EXISTS idx_price_history_product_recorded ON product_price_history (product_id, recorded_at);
+CREATE INDEX IF NOT EXISTS idx_price_history_availability     ON product_price_history (is_available);
+CREATE INDEX IF NOT EXISTS idx_price_history_data_source      ON product_price_history (data_source);
 
 -- productphotos
-CREATE INDEX idx_photos_product_id ON productphotos (product_id);
+CREATE INDEX IF NOT EXISTS idx_photos_product_id ON productphotos (product_id);
 
 -- ingredient_analysis
-CREATE INDEX idx_ingredient_analysis_freq       ON ingredient_analysis (frequency DESC);
-CREATE INDEX idx_ingredient_analysis_category   ON ingredient_analysis (category);
-CREATE INDEX idx_ingredient_analysis_processed  ON ingredient_analysis (is_processed);
-CREATE INDEX idx_ingredient_analysis_suspicion  ON ingredient_analysis (suspicion_level);
+CREATE INDEX IF NOT EXISTS idx_ingredient_analysis_freq       ON ingredient_analysis (frequency DESC);
+CREATE INDEX IF NOT EXISTS idx_ingredient_analysis_category   ON ingredient_analysis (category);
+CREATE INDEX IF NOT EXISTS idx_ingredient_analysis_processed  ON ingredient_analysis (is_processed);
+CREATE INDEX IF NOT EXISTS idx_ingredient_analysis_suspicion  ON ingredient_analysis (suspicion_level);
 
 -- ingredient_product_mapping
-CREATE INDEX idx_ingredient_product_mapping_ingredient ON ingredient_product_mapping (ingredient_id);
-CREATE INDEX idx_ingredient_product_mapping_sku        ON ingredient_product_mapping (product_sku);
+CREATE INDEX IF NOT EXISTS idx_ingredient_product_mapping_ingredient ON ingredient_product_mapping (ingredient_id);
+CREATE INDEX IF NOT EXISTS idx_ingredient_product_mapping_sku        ON ingredient_product_mapping (product_sku);
 
 -- category_processing_jobs
-CREATE INDEX idx_category_jobs_status ON category_processing_jobs (status);
-CREATE INDEX idx_category_jobs_code   ON category_processing_jobs (category_code);
-CREATE INDEX idx_jobs_queue_poll      ON category_processing_jobs (status, priority DESC, scheduled_for)
+CREATE INDEX IF NOT EXISTS idx_category_jobs_status ON category_processing_jobs (status);
+CREATE INDEX IF NOT EXISTS idx_category_jobs_code   ON category_processing_jobs (category_code);
+CREATE INDEX IF NOT EXISTS idx_jobs_queue_poll      ON category_processing_jobs (status, priority DESC, scheduled_for)
     WHERE status IN ('queued', 'in_progress');
-CREATE UNIQUE INDEX idx_unique_active_category ON category_processing_jobs (category_code)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_active_category ON category_processing_jobs (category_code)
     WHERE status IN ('queued', 'in_progress');
 
 -- processing_workers
-CREATE UNIQUE INDEX idx_workers_status      ON processing_workers (status, last_heartbeat DESC);
-CREATE INDEX        idx_workers_current_job ON processing_workers (current_job_id)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_workers_status      ON processing_workers (status, last_heartbeat DESC);
+CREATE INDEX IF NOT EXISTS idx_workers_current_job ON processing_workers (current_job_id)
     WHERE current_job_id IS NOT NULL;
 
 -- job_events
-CREATE INDEX idx_job_events_job  ON job_events (job_id, created_at DESC);
-CREATE INDEX idx_job_events_type ON job_events (event_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_job_events_job  ON job_events (job_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_job_events_type ON job_events (event_type, created_at DESC);
 
 -- product_processing_log
-CREATE INDEX idx_product_log_job    ON product_processing_log (job_id);
-CREATE INDEX idx_product_log_sku    ON product_processing_log (sku);
-CREATE INDEX idx_product_log_status ON product_processing_log (job_id, status);
+CREATE INDEX IF NOT EXISTS idx_product_log_job    ON product_processing_log (job_id);
+CREATE INDEX IF NOT EXISTS idx_product_log_sku    ON product_processing_log (sku);
+CREATE INDEX IF NOT EXISTS idx_product_log_status ON product_processing_log (job_id, status);
 
 -- update_statistics
-CREATE INDEX idx_update_statistics_job_id        ON update_statistics (job_id);
-CREATE INDEX idx_update_statistics_category_code ON update_statistics (category_code);
+CREATE INDEX IF NOT EXISTS idx_update_statistics_job_id        ON update_statistics (job_id);
+CREATE INDEX IF NOT EXISTS idx_update_statistics_category_code ON update_statistics (category_code);
 
 -- daily_update_logs
-CREATE INDEX idx_daily_update_logs_start_time  ON daily_update_logs (start_time DESC);
-CREATE INDEX idx_daily_update_logs_created_at  ON daily_update_logs (created_at DESC);
-CREATE INDEX idx_daily_update_logs_update_type ON daily_update_logs (update_type);
+CREATE INDEX IF NOT EXISTS idx_daily_update_logs_start_time  ON daily_update_logs (start_time DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_update_logs_created_at  ON daily_update_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_daily_update_logs_update_type ON daily_update_logs (update_type);
 
 
 -- ============================================================
 -- MATERIALIZED VIEW
--- Shared with external projects (e.g. abcde.lv frontend)
+-- Shared with external projects
 -- Refresh with: REFRESH MATERIALIZED VIEW CONCURRENTLY product_ingredient_cards;
 -- ============================================================
 
-CREATE MATERIALIZED VIEW product_ingredient_cards AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS product_ingredient_cards AS
 SELECT
     p.sku,
     p.name,
@@ -375,4 +385,4 @@ LEFT JOIN ingredient_analysis ia         ON ipm.ingredient_id = ia.id
 GROUP BY p.sku, p.name, p.category_id, nc.name_lv;
 
 -- Unique index required for CONCURRENT refresh
-CREATE UNIQUE INDEX idx_product_ingredient_cards_sku ON product_ingredient_cards (sku);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_ingredient_cards_sku ON product_ingredient_cards (sku);
