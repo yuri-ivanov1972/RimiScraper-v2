@@ -23,7 +23,12 @@ CREATE TABLE IF NOT EXISTS normalized_categories (
     parent_category_id      INTEGER     REFERENCES normalized_categories (category_id),
     level                   INTEGER     NOT NULL,
     nova_score              INTEGER     CHECK (nova_score BETWEEN 1 AND 4),
-    nova_score_explicit     BOOLEAN     NOT NULL DEFAULT FALSE
+    nova_score_explicit     BOOLEAN     NOT NULL DEFAULT FALSE,
+    nutriscore_category_type TEXT       CHECK (nutriscore_category_type IN (
+                                'beverage', 'cheese', 'red_meat',
+                                'fat_oil_nut', 'full_fvn', 'half_fvn'
+                            )),
+    nutriscore_category_type_explicit BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 

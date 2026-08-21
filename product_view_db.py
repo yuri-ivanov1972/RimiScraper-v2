@@ -550,6 +550,158 @@ class ProductViewDatabase:
             self._sync_products_nova_in_category(cursor, category_id, new_score)
         self.connection.commit()
 
+    # ------------------------------------------------------------------
+    # Nutri-Score category type helpers
+    # ------------------------------------------------------------------
+
+    def get_categories_with_ns_type(self) -> List[Dict]:
+        """Return all categories with nutriscore_category_type info and direct product count."""
+        self._ensure_connection()
+        query = """
+        SELECT
+            nc.category_id,
+            nc.rimi_category_code,
+            nc.name_lv,
+            nc.name_en,
+            nc.level,
+            nc.parent_category_id,
+            nc.nutriscore_category_type,
+            nc.nutriscore_category_type_explicit,
+            COUNT(p.product_id) AS product_count
+        FROM normalized_categories nc
+        LEFT JOIN products p ON p.category_id = nc.category_id
+        GROUP BY nc.category_id, nc.rimi_category_code, nc.name_lv, nc.name_en,
+                 nc.level, nc.parent_category_id,
+                 nc.nutriscore_category_type, nc.nutriscore_category_type_explicit
+        ORDER BY nc.rimi_category_code
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(query)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def get_ns_type_stats(self) -> Dict:
+        """Return summary counts: typed vs untyped categories, breakdown per type."""
+        self._ensure_connection()
+        query = """
+        SELECT
+            COUNT(*)                                                                           AS total,
+            COUNT(*) FILTER (WHERE nutriscore_category_type IS NOT NULL)                      AS typed,
+            COUNT(*) FILTER (WHERE nutriscore_category_type IS NULL)                          AS untyped,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'beverage')                     AS beverage,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'cheese')                       AS cheese,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'red_meat')                     AS red_meat,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'fat_oil_nut')                  AS fat_oil_nut,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'full_fvn')                     AS full_fvn,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'half_fvn')                     AS half_fvn
+        FROM normalized_categories
+        """
+        with self.connection.cursor() as cursor:
+            cursor.execute(query)
+            return dict(cursor.fetchone())
+
+    def set_category_ns_type(self, category_id: int, ns_type: str) -> None:
+        """Set nutriscore_category_type on a single category and mark it as explicitly set."""
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE normalized_categories
+                SET nutriscore_category_type = %s, nutriscore_category_type_explicit = TRUE
+                WHERE category_id = %s
+                """,
+                (ns_type, category_id)
+            )
+        self.connection.commit()
+
+    def cascade_ns_type_to_children(self, category_id: int, ns_type: str) -> int:
+        """
+        Recursively propagate ns_type to all descendants where
+        nutriscore_category_type_explicit is NOT TRUE (not manually overridden).
+        Returns the number of category rows updated.
+        """
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            cursor.execute(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT category_id
+                    FROM normalized_categories
+                    WHERE parent_category_id = %s
+                    UNION ALL
+                    SELECT nc.category_id
+                    FROM normalized_categories nc
+                    JOIN descendants d ON nc.parent_category_id = d.category_id
+                )
+                UPDATE normalized_categories
+                SET nutriscore_category_type = %s
+                WHERE category_id IN (SELECT category_id FROM descendants)
+                  AND (nutriscore_category_type_explicit IS NOT TRUE)
+                """,
+                (category_id, ns_type)
+            )
+            updated = cursor.rowcount
+        self.connection.commit()
+        return updated
+
+    def clear_category_ns_type_override(self, category_id: int) -> None:
+        """
+        Clear the explicit override for a category and re-inherit type from parent.
+        Cascades the new (inherited or NULL) type to non-explicit descendants.
+        """
+        self._ensure_connection()
+        with self.connection.cursor() as cursor:
+            # Re-inherit from parent
+            cursor.execute(
+                """
+                UPDATE normalized_categories child
+                SET nutriscore_category_type_explicit = FALSE,
+                    nutriscore_category_type = parent.nutriscore_category_type
+                FROM normalized_categories parent
+                WHERE child.category_id = %s
+                  AND parent.category_id = child.parent_category_id
+                """,
+                (category_id,)
+            )
+            if cursor.rowcount == 0:
+                # Root category — just clear
+                cursor.execute(
+                    """
+                    UPDATE normalized_categories
+                    SET nutriscore_category_type_explicit = FALSE,
+                        nutriscore_category_type = NULL
+                    WHERE category_id = %s
+                    """,
+                    (category_id,)
+                )
+            # Get the new (inherited) type
+            cursor.execute(
+                "SELECT nutriscore_category_type FROM normalized_categories WHERE category_id = %s",
+                (category_id,)
+            )
+            row = cursor.fetchone()
+            new_type = row['nutriscore_category_type'] if row else None
+
+            # Cascade to non-explicit descendants
+            cursor.execute(
+                """
+                WITH RECURSIVE descendants AS (
+                    SELECT category_id
+                    FROM normalized_categories
+                    WHERE parent_category_id = %s
+                    UNION ALL
+                    SELECT nc.category_id
+                    FROM normalized_categories nc
+                    JOIN descendants d ON nc.parent_category_id = d.category_id
+                )
+                UPDATE normalized_categories
+                SET nutriscore_category_type = %s
+                WHERE category_id IN (SELECT category_id FROM descendants)
+                  AND (nutriscore_category_type_explicit IS NOT TRUE)
+                """,
+                (category_id, new_type)
+            )
+        self.connection.commit()
+
     def set_product_hidden(self, product_id: int, is_hidden: bool) -> bool:
         """Set the is_hidden flag on a product and immediately insert a price_history row."""
         self._ensure_connection()

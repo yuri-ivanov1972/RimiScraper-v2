@@ -58,6 +58,32 @@ def render_nova_badge(nova_score: int, explicit: bool = True) -> str:
     )
 
 
+# Nutri-Score category type metadata: db value -> (display label, badge colour)
+_NS_TYPE_META = {
+    "beverage":    ("🥤 Beverage",       "#0078D7"),
+    "cheese":      ("🧀 Cheese",          "#F9A825"),
+    "red_meat":    ("🥩 Red Meat",        "#C62828"),
+    "fat_oil_nut": ("🫒 Fat / Oil / Nut", "#6D4C41"),
+    "full_fvn":    ("🍎 Full FVN (100%)", "#2E7D32"),
+    "half_fvn":    ("🥫 Half FVN (50%)",  "#558B2F"),
+}
+_NS_TYPE_VALUES = [None] + list(_NS_TYPE_META.keys())
+_NS_TYPE_LABELS = ["— (unset)"] + [v[0] for v in _NS_TYPE_META.values()]
+
+
+def render_ns_type_badge(ns_type: str, explicit: bool = True) -> str:
+    """Render a coloured Nutri-Score category type badge as HTML."""
+    if not ns_type or ns_type not in _NS_TYPE_META:
+        return ""
+    label, color = _NS_TYPE_META[ns_type]
+    opacity = "1.0" if explicit else "0.6"
+    return (
+        f'<span style="background-color:{color};color:white;font-weight:bold;'
+        f'padding:2px 7px;border-radius:3px;font-size:12px;opacity:{opacity}">'
+        f'{label}</span>'
+    )
+
+
 def render_product_card(product: dict) -> None:
     """Render a single product card in grid"""
     
@@ -546,14 +572,189 @@ Children you override explicitly stay fixed until you click **Clear**.
         db.close()
 
 
+def section_nutriscore_category_types():
+    """Nutri-Score Types tab — visually assign a Nutri-Score category type to each category."""
+    st.subheader("🥗 Nutri-Score Category Types")
+
+    with st.expander("ℹ️ Nutri-Score category type guide", expanded=False):
+        st.markdown("""
+| Type | Effect on Nutri-Score | Typical examples |
+|---|---|---|
+| **🥤 Beverage** | Different sugar & saturate thresholds; plain water → grade A | Soft drinks, juices, milk, plant drinks |
+| **🧀 Cheese** | Saturated fat replaces total fat in C component | Hard, soft, cream, blue cheese |
+| **🥩 Red Meat** | Protein points capped at 2 pts max | Fresh & processed red meat, sausages, pâté |
+| **🫒 Fat / Oil / Nut** | Fat % used instead of saturates ratio | Cooking oils, butter, margarine, nuts |
+| **🍎 Full FVN (100%)** | Full 100 % credit for fruit/veg/nut component | Fresh & frozen fruit and vegetables |
+| **🥫 Half FVN (50%)** | Half 50 % credit for fruit/veg/nut component | Canned vegetables, tomato sauces |
+
+**Setting a Level 1 category** automatically fills in that type for all children that have not been manually overridden (🔒).
+Children you override explicitly stay fixed until you click **Clear**.
+        """)
+
+    db = ProductViewDatabase()
+    try:
+        stats = db.get_ns_type_stats()
+        total = stats['total'] or 1
+        typed_pct = round(100 * stats['typed'] / total)
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Categories typed", f"{stats['typed']} / {stats['total']}")
+        c2.metric("Categories untyped", stats['untyped'])
+        c3.metric("Type coverage", f"{typed_pct}%")
+
+        breakdown_parts = []
+        for key, (label, color) in _NS_TYPE_META.items():
+            count = stats.get(key, 0) or 0
+            if count:
+                breakdown_parts.append(
+                    f'<span style="background:{color};color:white;padding:1px 6px;'
+                    f'border-radius:3px;font-size:12px;margin-right:4px">'
+                    f'{label}: {count}</span>'
+                )
+        if breakdown_parts:
+            st.markdown(" ".join(breakdown_parts), unsafe_allow_html=True)
+        else:
+            st.caption("No categories typed yet — assign types below.")
+
+        st.divider()
+
+        cats = db.get_categories_with_ns_type()
+        cat_map = {c['category_id']: c for c in cats}
+        for c in cat_map.values():
+            c['_children'] = []
+        for c in cats:
+            pid = c.get('parent_category_id')
+            if pid and pid in cat_map:
+                cat_map[pid]['_children'].append(c)
+
+        root_cats = sorted(
+            [c for c in cats if not c.get('parent_category_id')],
+            key=lambda x: x.get('rimi_category_code') or ''
+        )
+
+        def render_ns_row(cat, is_level1: bool, depth: int = 0):
+            cat_id = cat['category_id']
+            ns_type = cat['nutriscore_category_type']
+            explicit = cat['nutriscore_category_type_explicit']
+
+            col_name, col_badge, col_sel, col_set, col_clr = st.columns([5, 2, 3, 1, 1])
+
+            with col_name:
+                lock_sym = " 🔒" if explicit and not is_level1 else ""
+                inh_html = (
+                    " <em style='color:#888;font-size:0.85em'>(inherited)</em>"
+                    if ns_type and not explicit else ""
+                )
+                name = cat['name_lv']
+                prod_count = cat.get('product_count') or 0
+                count_html = (
+                    f' <span style="color:#aaa;font-size:0.82em;font-weight:normal">({prod_count:,})</span>'
+                    if prod_count else ''
+                )
+                if is_level1:
+                    st.markdown(
+                        f'<div><strong>{name}</strong>{count_html}</div>',
+                        unsafe_allow_html=True
+                    )
+                elif depth == 1:
+                    st.markdown(
+                        f'<div style="padding-left:10px;border-left:3px solid #888;margin:2px 0">'
+                        f'<strong>{name}</strong>{lock_sym}{inh_html}{count_html}</div>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    pad = 10 + (depth - 1) * 20
+                    st.markdown(
+                        f'<div style="padding-left:{pad}px;border-left:2px solid #ccc;'
+                        f'margin:2px 0;font-size:0.92em;color:#333">'
+                        f'{name}{lock_sym}{inh_html}{count_html}</div>',
+                        unsafe_allow_html=True
+                    )
+
+            with col_badge:
+                if ns_type:
+                    st.markdown(render_ns_type_badge(ns_type, explicit), unsafe_allow_html=True)
+                else:
+                    st.caption("—")
+
+            with col_sel:
+                try:
+                    default_idx = _NS_TYPE_VALUES.index(ns_type)
+                except ValueError:
+                    default_idx = 0
+                st.selectbox(
+                    "Type", _NS_TYPE_LABELS,
+                    index=default_idx,
+                    key=f"ns_type_sel_{cat_id}",
+                    label_visibility="collapsed"
+                )
+
+            with col_set:
+                btn_type = "primary" if is_level1 else "secondary"
+                if st.button("Set", key=f"ns_type_set_{cat_id}", type=btn_type, use_container_width=True):
+                    sel_label = st.session_state.get(f"ns_type_sel_{cat_id}", _NS_TYPE_LABELS[0])
+                    if sel_label == _NS_TYPE_LABELS[0]:
+                        st.toast("⚠️ Select a type first.")
+                    else:
+                        try:
+                            sel_idx = _NS_TYPE_LABELS.index(sel_label)
+                            sel_val = _NS_TYPE_VALUES[sel_idx]
+                        except (ValueError, IndexError):
+                            sel_val = None
+                        if sel_val:
+                            db.set_category_ns_type(cat_id, sel_val)
+                            n = db.cascade_ns_type_to_children(cat_id, sel_val)
+                            if n:
+                                st.toast(f"✅ Type set (cascaded to {n} children).")
+                            else:
+                                st.toast("✅ Type set.")
+                            st.rerun()
+
+            with col_clr:
+                if ns_type:
+                    if st.button("Clear", key=f"ns_type_clr_{cat_id}", use_container_width=True):
+                        db.clear_category_ns_type_override(cat_id)
+                        st.rerun()
+
+        def render_ns_children(children, depth: int):
+            for child in sorted(children, key=lambda x: x.get('rimi_category_code') or ''):
+                render_ns_row(child, is_level1=False, depth=depth)
+                if child['_children']:
+                    render_ns_children(child['_children'], depth + 1)
+
+        for root in root_cats:
+            root_type = root['nutriscore_category_type']
+            type_label = _NS_TYPE_META[root_type][0] if root_type and root_type in _NS_TYPE_META else "—"
+            exp_label = f"[{type_label}]  {root['name_lv']}  ({root.get('rimi_category_code', '')})"
+
+            with st.expander(exp_label, expanded=False):
+                render_ns_row(root, is_level1=True, depth=0)
+                if root['_children']:
+                    st.divider()
+                    render_ns_children(root['_children'], depth=1)
+
+    except Exception as e:
+        st.error(f"Error loading Nutri-Score category types: {e}")
+        import traceback
+        with st.expander("Details"):
+            st.code(traceback.format_exc())
+    finally:
+        db.close()
+
+
 def section_category_processing():
     """Section 1: Category Processing"""
     st.header("📦 Category Processing")
 
-    tab_queue, tab_nova = st.tabs(["📥 Job Queue", "🔢 NOVA Classification"])
+    tab_queue, tab_nova, tab_ns_type = st.tabs(
+        ["📥 Job Queue", "🔢 NOVA Classification", "🥗 Nutri-Score Types"]
+    )
 
     with tab_nova:
         section_nova_categories()
+
+    with tab_ns_type:
+        section_nutriscore_category_types()
 
     with tab_queue:
         _job_queue_section()
