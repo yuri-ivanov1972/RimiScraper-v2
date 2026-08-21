@@ -60,7 +60,8 @@ def render_nova_badge(nova_score: int, explicit: bool = True) -> str:
 
 # Nutri-Score category type metadata: db value -> (display label, badge colour)
 _NS_TYPE_META = {
-    "beverage":    ("🥤 Beverage",       "#0078D7"),
+    "general":     ("🌐 General",         "#607D8B"),
+    "beverage":    ("🥤 Beverage",        "#0078D7"),
     "cheese":      ("🧀 Cheese",          "#F9A825"),
     "red_meat":    ("🥩 Red Meat",        "#C62828"),
     "fat_oil_nut": ("🫒 Fat / Oil / Nut", "#6D4C41"),

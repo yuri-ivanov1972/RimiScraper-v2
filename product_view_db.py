@@ -587,6 +587,7 @@ class ProductViewDatabase:
             COUNT(*)                                                                           AS total,
             COUNT(*) FILTER (WHERE nutriscore_category_type IS NOT NULL)                      AS typed,
             COUNT(*) FILTER (WHERE nutriscore_category_type IS NULL)                          AS untyped,
+            COUNT(*) FILTER (WHERE nutriscore_category_type = 'general')                      AS general,
             COUNT(*) FILTER (WHERE nutriscore_category_type = 'beverage')                     AS beverage,
             COUNT(*) FILTER (WHERE nutriscore_category_type = 'cheese')                       AS cheese,
             COUNT(*) FILTER (WHERE nutriscore_category_type = 'red_meat')                     AS red_meat,
