@@ -1,0 +1,395 @@
+category_id,rimi_category_code,name_lv,name_en,parent_category_id,level,nova_score,nova_score_explicit
+1,SH-11,Piena produkti un olas,Dairy and eggs,,1,1,True
+2,SH-12,Saldētie ēdieni,Frozen dishes,,1,1,True
+3,SH-13,Saldumi un uzkodas,Sweets and snacks,,1,4,True
+4,SH-16,Vegāniem un veģetāriešiem,For vegans and vegetarians,,1,4,True
+5,SH-17,Gatavots Rimi,Made in Rimi,,1,3,True
+6,SH-2,Augļi un dārzeņi,Fruits and vegetables,,1,1,True
+7,SH-4,Iepakotā pārtika,Packaged food,,1,3,True
+8,SH-5,Dzērieni,Drink,,1,3,True
+9,SH-6,"Gaļa, zivis un gatavā kulinārija","Meat, fish and finished culinary",,1,3,True
+10,SH-7,Maize un konditoreja,Bread and pastry shop,,1,3,True
+15,SH-11-1,Biezpiens,Curd,1,2,1,True
+98,SH-11-10-1,Siers,Cheese,4,2,4,True
+97,SH-11-10-2,Augu dzērieni,Plant drinks,4,2,4,True
+96,SH-11-10-3,Deserti,Dessert,4,2,4,True
+95,SH-11-10-4,Krēms un majonēze,Cream and mayonnaise,4,2,4,True
+94,SH-11-10-5,Sviesta alternatīvas,Butter alternatives,4,2,4,True
+18,SH-11-2,Jogurti un deserti,Yogurts and desserts,1,2,1,True
+11,SH-11-3,Kefīrs un skābpiena produkti,Kefir and sour milk products,1,2,1,True
+19,SH-11-4,Krējums,Cream,1,2,1,True
+12,SH-11-5,Majonēze,Mayonnaise,1,2,4,True
+17,SH-11-6,Olas,Eggs,1,2,1,True
+16,SH-11-7,Sviests un margarīns,Butter and margarine,1,2,2,True
+20,SH-11-8,Piens,Milk,1,2,1,True
+14,SH-11-9,Siers,Cheese,1,2,3,True
+24,SH-12-1,Saldējums un ledus,Ice cream and ice,2,2,1,False
+23,SH-12-3,Saldētas zivis un jūras veltes,Frozen fish and seafood,2,2,1,True
+21,SH-12-4,Saldēti dārzeņi un augļi,Frozen vegetables and fruits,2,2,1,True
+22,SH-12-5,Saldēti ēdieni un konditorejas izstrādājumi,Frozen dishes and pastries,2,2,4,True
+402,SH-13-1,Batoniņi,Bars,3,2,4,True
+28,SH-13-10,Saldumi,Sweets,3,2,4,True
+36,SH-13-14,Šokolāde,Chocolate,3,2,4,True
+30,SH-13-17,Sezonālie saldumi,Seasonal sweets,3,2,4,True
+33,SH-13-18,Cepumi un vafeles,Cookies and waffles,3,2,4,True
+27,SH-13-2,Bērnu saldumi,Baby sweets,3,2,4,True
+26,SH-13-4,Čipsi un DIP mērces,Chips and DIPs,3,2,4,True
+31,SH-13-6,Košļājamās gumijas,Chewing gum,3,2,4,True
+29,SH-13-8,Popkorns un uzkodas,Popcorn and snacks,3,2,4,True
+32,SH-13-9,Rieksti un žāvēti augļi,Nuts and dried fruits,3,2,1,True
+39,SH-16-1,Gaļas un zivs alternatīvas,Meat and fish alternatives,4,2,4,True
+37,SH-16-2,Saldēti ēdieni un saldējums,Frozen dishes and ice cream,4,2,4,True
+38,SH-16-3,Konditoreja,Pastry shop,4,2,4,True
+40,SH-17-1,Jaunums! Gatavots Rimi īpaši Tev!,New! Made Rimi especially for you!,5,2,3,False
+43,SH-2-1,Augļi un ogas,Fruits and berries,6,2,1,False
+42,SH-2-2,Dārzeņi,Vegetables,6,2,1,False
+41,SH-2-3,Sēnes,Mushrooms,6,2,1,False
+58,SH-4-1,Ātri pagatavojami ēdieni,Instant food,7,2,4,True
+46,SH-4-10,Konservēti produkti,Canned products,7,2,3,True
+48,SH-4-11,Makaroni,Pasta,7,2,1,True
+55,SH-4-12,"Mērces, kečupi, sinepes, mārrutki","Sauces, ketchup, mustard, horseradish",7,2,3,True
+45,SH-4-13,Milti un miltu maisījumi,Flour and flour mixtures,7,2,1,True
+54,SH-4-14,Pasaules virtuve,World cuisine,7,2,3,True
+56,SH-4-15,Pākšaugi,Legumes,7,2,1,True
+60,SH-4-17,Speciālā pārtika un galetes,Special food and galettes,7,2,3,True
+52,SH-4-18,Sporta uzturs,Sports nutrition,7,2,4,True
+44,SH-4-19,Tēja,Tea,7,2,1,True
+61,SH-4-2,Brokastu pārslas un musli,Breakfast cereals and muesli,7,2,4,True
+59,SH-4-3,Eļļas un etiķi,Oils and vinegar,7,2,2,True
+53,SH-4-4,Garšvielas,Spice,7,2,2,True
+49,SH-4-5,Graudaugi un putraimi,Cereals and grits,7,2,1,True
+57,SH-4-6,Graudaugu pārslas,Cereal flakes,7,2,1,True
+51,SH-4-7,Kafija un kakao,Coffee and cocoa,7,2,1,True
+50,SH-4-9,Saldās garšvielas,Sweet spices,7,2,2,True
+63,SH-5-1,Bezalkoholiskais dzērieni,Non-alcoholic drinks,8,2,4,True
+70,SH-5-11,Svaigas sulas un smūtiji,Fresh juices and smoothies,8,2,1,True
+69,SH-5-12,Ūdens,Water,8,2,1,True
+66,SH-5-2,Dzirkstošie bezalkoholiskie dzērieni,Sparkling soft drinks,8,2,4,True
+65,SH-5-3,Enerģijas dzērieni,Energy drinks,8,2,4,True
+64,SH-5-4,Limonādes,Lemonade,8,2,3,True
+68,SH-5-6,Sīrupi,Syrup,8,2,3,True
+67,SH-5-7,Sporta un funkcionālie dzērieni,Sports and functional drinks,8,2,4,True
+62,SH-5-8,Sulas un sulu dzērieni,Juice and juice drinks,8,2,3,True
+77,SH-6-1,"Cīsiņi, sardeles, desiņas","Hot dogs, sardels, sausages",9,2,4,True
+84,SH-6-10,Pārstrādāta gaļa,Processed meat,9,2,3,True
+79,SH-6-13,Pārstrādāti jūras produkti un ikri,Preserved seafood and caviar,9,2,3,False
+73,SH-6-14,Pārstrādātās zivis,Processed fish,9,2,3,False
+83,SH-6-15,Svaiga gaļa,Fresh meat,9,2,1,True
+81,SH-6-17,Marinēta gaļa,Marinated meat,9,2,3,True
+85,SH-6-19,Svaigās zivis un jūrasveltes,Fresh fish and seafood,9,2,1,True
+71,SH-6-2,Desas un pastētes,Sausages and pates,9,2,4,True
+75,SH-6-20,Mani Gardumi gatavā kulinārija,My delicacies are finished culinary,9,2,3,True
+82,SH-6-5,Gaļas maltītes un uzkodas,Meat meals and snacks,9,2,3,True
+72,SH-6-7,Gatavā kulinārija,Ready -made culinary,9,2,3,True
+76,SH-6-9,Zivju un gaļas konservi,Canned fish and meat,9,2,3,True
+87,SH-7-1,Konditoreja,Pastry shop,10,2,3,False
+88,SH-7-2,Maize,Bread,10,2,3,False
+108,SH-11-1-1,Dažādu veidu biezpiens,Different types of cottage cheese,15,3,1,False
+107,SH-11-1-2,Mājas siers,Cheese,15,3,1,False
+123,SH-11-2-3,Biezpiena sieriņi,Curd cheese,18,3,1,False
+122,SH-11-2-4,Deserti,Dessert,18,3,1,False
+121,SH-11-2-5,Dzeramais jogurts,Drinking yogurt,18,3,1,False
+120,SH-11-2-6,Jogurts ar piedevām,Yogurt with additives,18,3,1,False
+119,SH-11-2-7,Jogurts bez piedevām,Yogurt without additives,18,3,1,False
+90,SH-11-3-8,Kefīrs un kefīra dzērieni,Kefir and kefir drinks,11,3,1,True
+89,SH-11-3-9,Paniņas,Buttermilk,11,3,1,True
+126,SH-11-4-10,Piedevas kafijai un tējai,Additives for coffee and tea,19,3,3,True
+125,SH-11-4-11,Saldais krējums,Cream,19,3,3,True
+124,SH-11-4-12,Skābais krējums un tā izstrādājumi,Sour cream and its products,19,3,1,True
+93,SH-11-5-1,Majonēze burciņās,Mayonnaise in jars,12,3,4,True
+92,SH-11-5-3,Majonēze paciņās,Mayonnaise,12,3,4,True
+91,SH-11-5-5,Majonēze spainītī,Mayonnaise,12,3,4,True
+118,SH-11-6-14,Citas olas,Other eggs,17,3,1,False
+117,SH-11-6-16,Olu produkti,Egg products,17,3,1,False
+116,SH-11-6-17,Bioloģiskājā lauksaimniecībā dētas olas Nr.0,Biological agricultural eggs No.0,17,3,1,False
+115,SH-11-6-18,Brīvos turēšanas apstākļos dētas vistu olas Nr.1,"In free holding conditions, chicken eggs No.1",17,3,1,False
+114,SH-11-6-19,Kūtī dētas vistu olas Nr.2,In the barn the chicken eggs No. 2,17,3,1,False
+113,SH-11-6-20,Sprostos dētas vistu olas Nr.3,Cages are given chicken eggs # 3,17,3,1,False
+112,SH-11-7-16,Margarīni,Margarine,16,3,4,True
+111,SH-11-7-17,Sviests,Butter,16,3,2,True
+110,SH-11-7-18,Sviests ar piedevām,Butter with additives,16,3,2,True
+109,SH-11-7-19,Tauku maisījumi,Fat mixtures,16,3,4,True
+132,SH-11-8-1,Pilnpiens,Whole milk,20,3,1,True
+131,SH-11-8-2,Bezlaktozes un citi pieni,Lactose and other milk non -lactose,20,3,1,True
+130,SH-11-8-21,Kondensētais piens,Condensed milk,20,3,3,True
+129,SH-11-8-22,Pasterizēts piens,Pasteurized milk,20,3,1,True
+128,SH-11-8-23,Piens ar piedevām,Milk with additives,20,3,4,True
+127,SH-11-8-24,UHT piens,Uht's milk,20,3,1,True
+106,SH-11-9-25,Cietais siers,Hard cheese,14,3,3,False
+105,SH-11-9-26,Fermentētais siers,Fermented cheese,14,3,3,False
+104,SH-11-9-27,"Feta, Mozzarella siers","Feta, mozzarella cheese",14,3,3,False
+103,SH-11-9-28,Kausētais siers,Melted cheese,14,3,3,False
+102,SH-11-9-29,"Kazas, aitas siers","Goats, sheep cheese",14,3,3,False
+101,SH-11-9-30,Krēmsiers,Cream cheese,14,3,3,False
+100,SH-11-9-31,Pārējie sieri,The rest of the cheese,14,3,3,False
+99,SH-11-9-32,Pelējuma siers,Mold cheese,14,3,3,False
+147,SH-12-1-1,Ledus,Ice,24,3,1,True
+146,SH-12-1-2,Lielo iepakojumu saldējumi,Great pack of ice creams,24,3,4,True
+145,SH-12-1-3,Porcijas saldējumi,Portion of ice cream,24,3,4,True
+144,SH-12-1-4,Saldētas sulas saldējumi,Frozen juice ice creams,24,3,4,True
+143,SH-12-3-6,Saldētas garneles,Frozen shrimp,23,3,1,False
+142,SH-12-3-7,Saldētas jūras veltes,Frozen seafood,23,3,1,False
+141,SH-12-3-8,Saldētas zivis,Frozen fish,23,3,1,False
+140,SH-12-3-9,Saldēti zivju ēdieni,Frozen fish dishes,23,3,1,False
+135,SH-12-4-10,Saldēti augļi un ogas,Frozen fruits and berries,21,3,1,False
+134,SH-12-4-11,Saldēti dārzeņi un maisījumi,Frozen vegetables and mixtures,21,3,1,False
+133,SH-12-4-12,Saldēti kartupeļi,Frozen potatoes,21,3,1,False
+139,SH-12-5-14,Saldētas picas,Frozen pizza,22,3,4,False
+138,SH-12-5-15,"Saldētas maizītes, konditorejas izstrādājumi","Frozen buns, pastries",22,3,4,False
+137,SH-12-5-16,Saldēti otrie ēdieni,Frozen second dishes,22,3,4,False
+136,SH-12-5-17,"Saldēti pelmeņi, vareņiki","Frozen dumplings, varyniki",22,3,4,False
+165,SH-13-10-24,Austrumu saldumi,Oriental sweets,28,3,4,False
+164,SH-13-10-25,Dražejas,Dragees,28,3,4,False
+163,SH-13-10-26,Īrisi,Iris,28,3,4,False
+162,SH-13-10-27,Karameles,Caramel,28,3,4,False
+161,SH-13-10-28,Konfektes ar alkohola pildījumu,Candy with alcohol filling,28,3,4,False
+160,SH-13-10-30,Marmelāde,Marmalade,28,3,4,False
+159,SH-13-10-31,Šokolādes konfektes,Chocolate candy,28,3,4,False
+158,SH-13-10-32,Konfektes kastēs,Candy in boxes,28,3,4,False
+157,SH-13-10-33,Trifeles,Truffle,28,3,4,False
+156,SH-13-10-34,Zefīrs,Marshmallow,28,3,4,False
+155,SH-13-10-35,Želejas konfektes un košļājamās konfektes,Gel candy and chewing candy,28,3,4,False
+181,SH-13-14-51,Baltā šokolāde,White chocolate,36,3,4,False
+180,SH-13-14-53,Piena šokolāde,Milk chocolate,36,3,4,False
+179,SH-13-14-54,Tumšā šokolāde,The dark chocolate,36,3,4,False
+178,SH-13-16-57,Vafeles,Waffle,33,3,4,False
+177,SH-13-16-59,Vafeļu tortes,Waffle cakes,33,3,4,False
+176,SH-13-16-60,"Šokolādes, augļu un marcipāna","Chocolate, fruit and marzipan",402,3,4,False
+154,SH-13-2-2,Citi bērnu saldumi,Other baby sweets,27,3,4,False
+153,SH-13-2-3,Konfektes uz kociņa,Candy on a stick,27,3,4,False
+152,SH-13-2-5,Šokolādes olas,Chocolate eggs,27,3,4,False
+175,SH-13-3-6,Piparkūkas un sezonāli piedāvājumi,Gingerbread and seasonal offers,33,3,4,False
+174,SH-13-3-7,Saldie cepumi,Sweet biscuits,33,3,4,False
+173,SH-13-3-8,Sāļie cepumi,Salty cookies,33,3,4,False
+151,SH-13-4-10,Kartupeļu čipsi,Potato chips,26,3,4,False
+150,SH-13-4-11,Maizes čipsi,Bread chips,26,3,4,False
+149,SH-13-4-12,Kukurūzas čipsi,Maize chips,26,3,4,False
+148,SH-13-4-9,Augļu/dārzeņu čipsi,Fruit/vegetable chips,26,3,4,False
+25,SH-13-5,DIP mērču maisījumi,DIP sauce mixtures,26,3,4,False
+167,SH-13-6-1,Košļājamās gumijas,Chewing gum,31,3,4,False
+166,SH-13-6-2,Pastilas,Pastillas,31,3,4,False
+172,SH-13-9-17,Citi,Others,32,3,1,True
+171,SH-13-9-18,Rieksti,Nuts,32,3,1,True
+170,SH-13-9-20,Sēklas,Seed,32,3,1,True
+169,SH-13-9-21,Žāvēti augļi un ogas,Dried fruits and berries,32,3,4,True
+168,SH-13-9-23,Žāvētu augļu un riekstu maisījumi,Mixtures of dried fruits and nuts,32,3,4,True
+184,SH-16-2-1,Saldētas picas,Frozen pizza,37,3,4,False
+183,SH-16-2-2,Saldēti otrie ēdieni,Frozen second dishes,37,3,4,False
+182,SH-16-2-3,Saldējums,Ice,37,3,4,False
+201,SH-2-1-2,Āboli un bumbieri,Apples and pears,43,3,1,False
+200,SH-2-1-3,Banāni,Bananas,43,3,1,False
+199,SH-2-1-4,Citrusaugļi,Citrus fruits,43,3,1,False
+198,SH-2-1-5,Eksotiskie augļi,Exotic fruits,43,3,1,False
+197,SH-2-1-6,Melones un arbūzi,Melons and watermelons,43,3,1,False
+196,SH-2-1-7,Kauliņaugļi,Dice fruits,43,3,1,False
+195,SH-2-1-9,Ogas,Berries,43,3,1,False
+194,SH-2-2-10,Bietes un citi sakņaugi,Beets and other root crops,42,3,1,False
+193,SH-2-2-12,Gurķi un tomāti,Cucumbers and tomatoes,42,3,1,False
+192,SH-2-2-13,Kartupeļi un burkāni,Potatoes and carrots,42,3,1,False
+191,SH-2-2-14,"Pākšaugi, kukurūza un sparģeļi","Legumes, corn and asparagus",42,3,1,False
+190,SH-2-2-16,Paprika un pipari,Peppers and pepper,42,3,1,False
+189,SH-2-2-17,Pārstrādātie dārzeņi,Processed vegetables,42,3,1,False
+188,SH-2-2-18,Kāposti un salāti,Cabbage and salad,42,3,1,False
+187,SH-2-2-19,"Sīpoli, puravi un ķiploki","Onions, leeks and garlic",42,3,1,False
+186,SH-2-2-20,Garšaugi,Herbs,42,3,1,False
+185,SH-2-2-9,Ķirbji un kabačveidīgie,Pumpkins and courgettes,42,3,1,False
+292,SH-4-1-1,Ātri pagatavojamas mērces un maisījumi,Quickly prepared sauces and mixtures,58,3,4,False
+291,SH-4-1-2,Ātri pagatavojamas nūdeles un makaroni,Quickly prepared noodles and pasta,58,3,4,False
+290,SH-4-1-3,Ātri pagatavojamas putras,Quick -cooked porridge,58,3,4,False
+289,SH-4-1-4,Ātri pagatavojamas zupas,Quickly prepared soups,58,3,4,False
+288,SH-4-1-5,Buljoni,Broth,58,3,4,False
+228,SH-4-10-55,Citi konservēti dārzeņi,Other canned vegetables,46,3,3,False
+227,SH-4-10-56,"Ievārījumi, marmelādes un saldās mērces","Jams, marmalades and sweet sauces",46,3,3,False
+226,SH-4-10-57,Konservēta kukurūza,Canned corn,46,3,3,False
+225,SH-4-10-58,Konservēta paprika,Preserved peppers,46,3,3,False
+224,SH-4-10-59,Konservētas bietes,Canned beets,46,3,3,False
+223,SH-4-10-60,Konservētas olīvas,Canned olives,46,3,3,False
+222,SH-4-10-61,Konservētas sēnes,Canned mushrooms,46,3,3,False
+221,SH-4-10-62,Konservēti augļi un ogas,Canned fruits and berries,46,3,3,False
+220,SH-4-10-63,Konservēti biezeņi,Canned purees,46,3,3,False
+219,SH-4-10-64,Konservēti ēdieni un zupas,Canned food and soups,46,3,3,False
+218,SH-4-10-65,Konservēti gurķi,Canned cucumbers,46,3,3,False
+217,SH-4-10-66,Konservēti pākšaugi,Preserved legumes,46,3,3,False
+216,SH-4-10-67,Konservēti tomāti,Canned tomatoes,46,3,3,False
+215,SH-4-10-68,Konservēti zirņi,Canned peas,46,3,3,False
+214,SH-4-10-69,Medus,Honey,46,3,1,True
+213,SH-4-10-70,Šokolādes un riekstu krēmi,Chocolate and nut creams,46,3,3,False
+235,SH-4-11-71,"Citi makaronu veidi (pildīti makaroni, krāsaini makaroni)","Other types of pasta (stuffed pasta, colorful pasta)",48,3,1,False
+234,SH-4-11-72,Garie makaroni,Long pasta,48,3,1,False
+233,SH-4-11-73,Īsie makaroni,Short pasta,48,3,1,False
+232,SH-4-11-74,"Lazanja, kaneloni makaroni","Lasagna, canelona pasta",48,3,1,False
+231,SH-4-11-75,Olu makaroni,Egg pasta,48,3,1,False
+230,SH-4-11-76,Pilngraudu makaroni,Whole wheat pasta,48,3,1,False
+278,SH-4-12-77,Adžika,Adjika,55,3,3,False
+277,SH-4-12-78,Citas mērces,Other sauces,55,3,3,False
+276,SH-4-12-79,Mārrutki,Horseradish,55,3,3,False
+275,SH-4-12-80,Mērces ēdiena gatavošanai,Sauces for cooking,55,3,3,False
+274,SH-4-12-81,Pesto,Pesto,55,3,3,False
+273,SH-4-12-82,Salātu mērces,Salad dressings,55,3,3,False
+272,SH-4-12-83,Sinepes,Mustard,55,3,3,False
+271,SH-4-12-84,Kečupi,Ketchup,55,3,3,False
+270,SH-4-12-85,Tomātu mērces un pastas,Tomato sauces and pastes,55,3,3,False
+212,SH-4-13-86,Citi miltu veidi,Other types of flour,45,3,1,True
+211,SH-4-13-87,Kartupeļu milti un ciete,Potato flour and starch,45,3,1,True
+210,SH-4-13-88,Kviešu milti,Wheat flour,45,3,1,True
+209,SH-4-13-89,Miltu maisījumi,Flour mixtures,45,3,1,True
+208,SH-4-13-90,Rudzu milti,Rye flour,45,3,1,True
+269,SH-4-14-91,Citu valstu virtuves,Cuisines of other countries,54,3,3,False
+268,SH-4-14-92,Japāņu ēdieni,Japanese dishes,54,3,3,False
+267,SH-4-14-93,Kokosa piens,Coconut,54,3,1,True
+266,SH-4-14-94,Ķiniešu ēdieni,Cinema dishes,54,3,3,False
+265,SH-4-14-95,Meksikāņu ēdieni,Mexican dishes,54,3,3,False
+264,SH-4-14-96,Nūdeles,Noodle,54,3,3,False
+263,SH-4-14-97,Sojas mērces,Soy sauces,54,3,3,False
+262,SH-4-14-98,Taizemes ēdieni,Thai dishes,54,3,3,False
+282,SH-4-15-100,Lēcas,Lentils,56,3,1,True
+281,SH-4-15-103,Zirņi,Peas,56,3,1,True
+280,SH-4-15-104,Pupiņas,Beans,56,3,1,True
+279,SH-4-15-99,Citi pākšaugu un graudaugu produkti,Other legumes and cereal products,56,3,1,True
+47,SH-4-16,Rīsi,Rice,49,3,1,False
+307,SH-4-17-107,Bezglutēna  produkti,Gluten -free,60,3,1,True
+306,SH-4-17-108,Citi speciālie pārtikas produkti,Other special foods,60,3,3,True
+305,SH-4-17-109,"Augļu un riekstu batoniņi, hematogēns","Fruit and nuts, hematogen",60,3,3,True
+304,SH-4-17-110,Diabētiskie produkti,Diabetic products,60,3,4,True
+303,SH-4-17-111,Galetes,Galette,60,3,3,False
+255,SH-4-18-1,Proteīna batoniņi,Protein bars,52,3,4,True
+254,SH-4-18-2,Pulveri,Powder,52,3,4,True
+253,SH-4-18-3,Gēli un tabletes,Gels and tablets,52,3,4,True
+207,SH-4-19-115,Augļu tējas,Fruit tea,44,3,1,False
+206,SH-4-19-116,Melnā tēja,Black tea,44,3,1,False
+205,SH-4-19-117,Speciālās tējas,Special tea,44,3,1,False
+204,SH-4-19-118,Tējas komplekti un dāvanas,Tea sets and gifts,44,3,1,False
+203,SH-4-19-119,Zaļā tēja,Green tea,44,3,1,False
+202,SH-4-19-120,Zāļu tējas,Herbal teas,44,3,1,False
+310,SH-4-2-7,Brokastu pārslas,Breakfast cereal,61,3,4,False
+309,SH-4-2-8,Musli,Muesli,61,3,4,False
+308,SH-4-2-9,Musli,Muesli,402,3,4,False
+302,SH-4-3-11,Ābolu etiķi,Apple vinegar,59,3,2,False
+301,SH-4-3-12,Balzamiko etiķi un mērces,Balsamic vinegar and sauces,59,3,2,False
+300,SH-4-3-13,Galda etiķi,Table vinegar,59,3,2,False
+299,SH-4-3-14,Kokosriekstu eļļa,Coconut oil,59,3,2,False
+298,SH-4-3-15,Olīveļļa,Olive oil,59,3,2,False
+297,SH-4-3-16,Rapšu eļļa,Rape oil,59,3,2,False
+296,SH-4-3-17,Saulespuķu eļļa,Sunflower oil,59,3,2,False
+295,SH-4-3-18,Speciālās un citas eļļas,Special and other oils,59,3,2,False
+294,SH-4-3-19,Vīna etiķi,Vinegar,59,3,2,False
+293,SH-4-3-20,Vīnogu eļļa,Grape oil,59,3,2,False
+261,SH-4-4-21,Garšvielas un garšaugi,Spices and herbs,53,3,2,False
+260,SH-4-4-22,Garšvielu maisījumi,Spice mixtures,53,3,2,False
+259,SH-4-4-23,Marinādes,Marinade,53,3,2,False
+258,SH-4-4-24,Pipari,Pepper,53,3,2,False
+257,SH-4-4-25,Sāls,Salt,53,3,2,False
+256,SH-4-4-26,Universālās garšvielas,Universal spices,53,3,2,False
+239,SH-4-5-27,Citi putraimi un graudu maisījumi,Other grits and grain mixtures,49,3,1,False
+238,SH-4-5-28,Griķi,Buckwheat,49,3,1,False
+237,SH-4-5-29,Grūbas un pērļu grūbas,Pearls and pearl pearls,49,3,1,False
+236,SH-4-5-30,"Manna, bulgurs un kuskuss","Manna, Bulgur and Couscous",49,3,1,False
+287,SH-4-6-31,Auzu pārslas,Oat flakes,57,3,1,False
+286,SH-4-6-32,Ātri pagatavojamas pārslu putras,Quick -cooked flakes porridge,57,3,1,False
+285,SH-4-6-33,Citas pārslas,Other flakes,57,3,1,False
+284,SH-4-6-34,Dažādu graudu pārslas,The flakes of different grains,57,3,1,False
+283,SH-4-6-35,Griķu un rīsu pārslas,Buckwheat and rice flakes,57,3,1,False
+252,SH-4-7-38,Cigoriņu un miežu dzērieni,Chicory and barley drinks,51,3,1,False
+251,SH-4-7-39,Kafija kapsulās,Coffee in capsules,51,3,1,False
+250,SH-4-7-40,Kafijas dzērieni,Coffee drinks,51,3,1,False
+249,SH-4-7-41,Kafijas pupiņas,Coffee beans,51,3,1,False
+248,SH-4-7-42,Malta kafija,Ground coffee,51,3,1,False
+247,SH-4-7-43,Šķīstošā kafija,Soluble coffee,51,3,1,False
+246,SH-4-7-44,Kakao,Cocoa,51,3,1,False
+245,SH-4-9-48,Cukurs,Sugar,50,3,2,False
+244,SH-4-9-49,Konditorijas garšvielas,Pastry spices,50,3,2,False
+243,SH-4-9-50,Kūku rotājumi,Cake ornaments,50,3,2,False
+242,SH-4-9-51,Raugs un citi rauga izstrādājumi,Yeast and other yeast products,50,3,2,False
+241,SH-4-9-53,Sausie desertu maisījumi,Dry dessert mixtures,50,3,2,False
+240,SH-4-9-54,Želeja,Gel,50,3,2,False
+319,SH-5-1-1,Bezalkoholiskais alus,Non -alcoholic beer,63,3,4,False
+318,SH-5-1-2,Bezalkoholiskais sidrs,Non -alcoholic cider,63,3,4,False
+317,SH-5-1-3,Bezalkoholiskais vīns,Non -alcoholic wine,63,3,4,False
+333,SH-5-11-1,Augļu sulas un smūtiji,Fruit juices and smoothies,70,3,1,False
+332,SH-5-11-2,Dārzeņu sulas un smūtiji,Vegetable juices and smoothies,70,3,1,False
+331,SH-5-12-18,Gāzēts ūdens,Carbonated water,69,3,1,True
+330,SH-5-12-19,Negāzēts ūdens,Overweight,69,3,1,True
+329,SH-5-12-20,Ūdens ar garšām,Water with flavors,69,3,4,True
+324,SH-5-4-5,Gāzētas limonādes,Carbonated lemonade,64,3,3,False
+323,SH-5-4-6,Kvass,Kvass,64,3,3,False
+322,SH-5-4-7,Ledus tējas,Ice tea,64,3,3,False
+321,SH-5-4-8,Negāzētas limonādes,Aimed lemonade,64,3,3,False
+320,SH-5-4-9,Toniki,Tonic,64,3,3,False
+328,SH-5-6-1,Kafijas un kokteiļu sīrupi,Coffee and cocktail syrups,68,3,3,False
+327,SH-5-6-2,Ogu un augļu sīrupi,Berry and fruit syrups,68,3,3,False
+326,SH-5-7-12,Sporta dzērieni,Sports drinks,67,3,4,False
+325,SH-5-7-13,Vitaminizētais ūdens,Vitaminized water,67,3,4,False
+316,SH-5-8-1,Ābolu un miksētas ābolu,Apple and mixed apple,62,3,3,False
+315,SH-5-8-2,Citrusaugļu,Citrus fruits,62,3,3,False
+314,SH-5-8-3,Ogu,Berry,62,3,3,False
+313,SH-5-8-4,Dārzeņu,Vegetable,62,3,3,False
+312,SH-5-8-5,Multiaugļu,Multi -plug,62,3,3,False
+311,SH-5-8-6,Citu augļu sulas,Other fruit juices,62,3,3,False
+361,SH-6-1-1,Cīsiņi un sardeles,Sausages and sardels,77,3,4,False
+360,SH-6-1-2,Grila desiņas,Grill sausages,77,3,4,False
+381,SH-6-10-26,Auksti kūpinātā gaļa,Cold smoked meat,84,3,3,False
+380,SH-6-10-27,Karsti kūpinātā gaļa,Hot smoked meat,84,3,3,False
+78,SH-6-11,Dažādu veidu maltā gaļa,Different types of minced meat,83,3,1,False
+365,SH-6-13-1,Ikri,Caviar,79,3,1,True
+364,SH-6-13-2,Jūras kāposti,Cabbage,79,3,4,True
+363,SH-6-13-3,Pārstādātas jūras veltes,Transplanted seafood,79,3,4,True
+352,SH-6-14-32,Auksti kūpinātas zivis,Cold smoked fish,73,3,3,True
+351,SH-6-14-33,Karsti kūpinātas zivis,Hot smoked fish,73,3,3,True
+350,SH-6-14-34,Krabju nūjiņas,Crab sticks,73,3,4,True
+349,SH-6-14-35,Nēģi,Lamprey,73,3,3,True
+348,SH-6-14-36,"Sālītas, marinētas zivis, zivis eļļā","Salted, pickled fish, fish in oil",73,3,3,True
+347,SH-6-14-37,Vītinātas zivis,Dried fish,73,3,3,True
+346,SH-6-14-38,Zivju un ikru pastētes,Fish and caviar pates,73,3,3,True
+345,SH-6-14-39,Zivju salāti un maltītes,Fish salads and meals,73,3,3,True
+379,SH-6-15-40,Cūkgaļa,Pork,83,3,1,False
+378,SH-6-15-41,Liellopa un teļa gaļa,Beef and veal,83,3,1,False
+377,SH-6-15-42,Svaigas gaļas subprodukti,Fresh meat offal,83,3,1,False
+376,SH-6-15-5,Truša gaļa,Rabbit,83,3,1,False
+375,SH-6-15-6,Jēra gaļa,Lamb,83,3,1,False
+367,SH-6-16-45,Tītara un pīles gaļa,Turkey and duck meat,83,3,1,False
+366,SH-6-16-46,Vistas gaļa,Chicken,83,3,1,False
+369,SH-6-17-48,Mājputnu gaļa,Poultry,81,3,3,False
+368,SH-6-17-49,Cūkgaļa,Pork,81,3,3,False
+86,SH-6-18,Svaigās jūras veltes,Fresh seafood,85,3,1,False
+383,SH-6-19-51,Veselas zivis,Whole fish,85,3,1,False
+382,SH-6-19-52,Zivju filejas,Fish fillets,85,3,1,False
+337,SH-6-2-1,"Pastēte, aknu desas","Pate, liver sausages",71,3,4,False
+336,SH-6-2-3,Auksti kūpinātās desas,Cold smoked sausages,71,3,4,False
+335,SH-6-2-4,Karsti kūpinātās desas,Hot smoked sausages,71,3,4,False
+334,SH-6-2-5,Vārītās desas,Cooked sausages,71,3,4,False
+354,SH-6-20-4,Gatavās maltītes,Meal sets,75,3,3,False
+74,SH-6-21,Vītinātās gaļas produkti,Dried meat products,84,3,3,False
+374,SH-6-5-1,"Galerti, gaļa želejā","Gallets, meat in jelly",82,3,3,False
+373,SH-6-5-2,"Gaļas bumbiņas, nageti","Meat balls, nagetti",82,3,3,False
+372,SH-6-5-3,Lēni pagatavotas gaļas maltītes,Slowly cooked meat meals,82,3,3,False
+371,SH-6-5-4,Uzkodas,Snack,82,3,3,False
+370,SH-6-5-5,RIMI kulinārija,Rimi's culinary,82,3,3,False
+344,SH-6-7-12,Pankūkas,Pancakes,72,3,3,False
+343,SH-6-7-13,Pastas un picas,Paste and pizza,72,3,3,False
+342,SH-6-7-15,Piedevas un mērces,Additives and sauces,72,3,3,False
+341,SH-6-7-16,Salāti,Salad,72,3,3,False
+340,SH-6-7-18,Sviestmaizes,Sandwich,72,3,3,False
+339,SH-6-7-19,"Uzkodas, plates, kulinārija","Snacks, plates, culinary",72,3,3,False
+338,SH-6-7-21,Gatavas maltītes,Ready -made meals,72,3,3,False
+359,SH-6-9-14,Gaļas konservi,Canned food,76,3,3,False
+358,SH-6-9-22,Citas konservētas zivis,Other canned fish,76,3,3,False
+357,SH-6-9-23,Konservētas jūras veltes,Canned seafood,76,3,3,False
+356,SH-6-9-24,Konservētas šprotes,Canned sprats,76,3,3,False
+355,SH-6-9-25,Konservēts tuncis,Preserved tuna,76,3,3,False
+391,SH-7-1-1,Groziņi,Baskets,87,3,3,False
+390,SH-7-1-10,Svaiga mīkla un pamatnes,Fresh dough and base,87,3,3,False
+389,SH-7-1-11,Tortes,Cakes,87,3,3,False
+388,SH-7-1-12,"Smalkmaizītes, pīrādziņi, cepumi","Muffins, patties, biscuits",87,3,3,False
+387,SH-7-1-3,Kēksi un mafini,Cakes and muffins,87,3,3,False
+386,SH-7-1-5,Kūkas un kūciņas,Cakes and cakes,87,3,3,False
+385,SH-7-1-9,Ruletes un plātsmaizes,Roulette and plaques,87,3,3,False
+401,SH-7-2-14,Baltmaize,White bread,88,3,3,False
+400,SH-7-2-15,Svaigi cepta maize,Freshly fried bread,88,3,3,False
+399,SH-7-2-17,Sēklu un pelēkā maize,Seed and gray bread,88,3,3,False
+398,SH-7-2-19,"Polārmaize, lavašs","Polar bread, lavash",88,3,3,False
+397,SH-7-2-20,Porciju maize,Portion of bread,88,3,3,False
+396,SH-7-2-21,Saldskābmaize,Sweet and sour bread,88,3,3,False
+395,SH-7-2-23,Tostermaize,Toaster bread,88,3,3,False
+394,SH-7-2-25,Tumšā maize,The dark bread,88,3,3,False
+393,SH-7-2-27,Sausmaizītes un uzkodas,SAVESS MAKE AND SAKE,88,3,3,False
+392,SH-7-2-28,Rīvmaize,Breadcrumb,88,3,3,False
