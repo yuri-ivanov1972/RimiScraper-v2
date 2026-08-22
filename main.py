@@ -981,7 +981,7 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
         
         if submitted:
             try:
-                calculator = NutriscoreCalculator()
+                calculator = NutriscoreCalculator(db.connection)
                 nutri_result = calculator.calculate_single_product(
                     energy_kj=energy_kj,
                     sugars=carbs_sugars,
@@ -992,7 +992,8 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                     total_fat=fat_total,
                     category_code=product.get('rimi_category_code'),
                     product_name=product.get('name'),
-                    ingredients_text=product.get('ingredients_text')
+                    ingredients_text=product.get('ingredients_text'),
+                    category_id=product.get('category_id'),
                 )
                 
                 new_grade = nutri_result.get('grade') if nutri_result.get('success') else product.get('nutri_score_grade')
@@ -1997,25 +1998,6 @@ def section_nutriscore_recalculation():
     This will update the `nutri_score_grade` and `nutri_score_points` in the database.
     """)
     
-    from nutriscore_calculator import NutriscoreCalculator, FAT_CATEGORIES, CHEESE_CATEGORIES, FULL_FVN_CATEGORIES, HALF_FVN_CATEGORIES
-    
-    with st.expander("📋 Current Category Mappings", expanded=False):
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**Fat Categories:**")
-            for cat in sorted(FAT_CATEGORIES):
-                st.caption(cat)
-            st.write("**Cheese Categories:**")
-            for cat in sorted(CHEESE_CATEGORIES):
-                st.caption(cat)
-        with col2:
-            st.write("**100% Fruits/Veg/Nuts:**")
-            for cat in sorted(FULL_FVN_CATEGORIES):
-                st.caption(cat)
-            st.write("**50% Fruits/Veg/Nuts:**")
-            for cat in sorted(HALF_FVN_CATEGORIES):
-                st.caption(cat)
-    
     mode = st.radio(
         "Recalculation Mode:",
         ["Single Product (by SKU)", "By Category", "All Products"],
@@ -2164,6 +2146,7 @@ def get_products_for_nutriscore_recalc(db: ProductViewDatabase, category_code: s
             p.product_id,
             p.sku,
             p.name,
+            p.category_id,
             nc.rimi_category_code as category_code,
             nf.energy_kj,
             nf.fat_total,
@@ -2205,6 +2188,7 @@ def recalculate_nutriscore_for_product(db: ProductViewDatabase, sku: str):
             p.product_id,
             p.sku,
             p.name,
+            p.category_id,
             nc.rimi_category_code as category_code,
             nf.energy_kj,
             nf.fat_total,
@@ -2243,7 +2227,7 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
         if product.get(field) is None:
             return {'success': False, 'skipped': True, 'message': f'Missing required field: {field}'}
     
-    calculator = NutriscoreCalculator()
+    calculator = NutriscoreCalculator(db.connection)
     
     try:
         fiber_value = product.get('fiber')
@@ -2259,7 +2243,8 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
             total_fat=float(product['fat_total']) if product.get('fat_total') else None,
             category_code=product.get('category_code'),
             product_name=product.get('name'),
-            ingredients_text=product.get('ingredients_text')
+            ingredients_text=product.get('ingredients_text'),
+            category_id=product.get('category_id'),
         )
         
         if result['success']:
@@ -2368,6 +2353,7 @@ def section_fiber_estimation():
                         p.product_id,
                         p.sku,
                         p.name,
+                        p.category_id,
                         nc.rimi_category_code as category_code,
                         nf.fiber,
                         nf.energy_kj,
@@ -2393,7 +2379,7 @@ def section_fiber_estimation():
         
         st.write(f"Found **{len(products)}** products with missing fiber")
         
-        calculator = NutriscoreCalculator()
+        calculator = NutriscoreCalculator(db.connection)
         results = []
         for product in products:
             new_fiber, source, should_update, match_type = estimate_fiber(
@@ -2425,7 +2411,8 @@ def section_fiber_estimation():
                         total_fat=float(product['fat_total']) if product.get('fat_total') else None,
                         category_code=product.get('category_code'),
                         product_name=product.get('name'),
-                        ingredients_text=product.get('ingredients_text')
+                        ingredients_text=product.get('ingredients_text'),
+                        category_id=product.get('category_id'),
                     )
                     if calc_result.get('success'):
                         new_grade = calc_result['grade']
@@ -2436,6 +2423,7 @@ def section_fiber_estimation():
                 'product_id': product['product_id'],
                 'sku': product['sku'],
                 'name': product['name'][:50],
+                'category_id': product.get('category_id'),
                 'category': product.get('category_code', 'N/A'),
                 'old_fiber': product.get('fiber') or 0,
                 'new_fiber': new_fiber,
@@ -2481,7 +2469,7 @@ def section_fiber_estimation():
         progress_bar = st.progress(0)
         status_text = st.empty()
         
-        calculator = NutriscoreCalculator()
+        calculator = NutriscoreCalculator(db.connection)
         updated_count = 0
         grade_changed_count = 0
         
@@ -2506,7 +2494,8 @@ def section_fiber_estimation():
                         total_fat=float(result['fat_total']) if result.get('fat_total') else None,
                         category_code=result['category'],
                         product_name=result.get('name'),
-                        ingredients_text=result.get('ingredients_text')
+                        ingredients_text=result.get('ingredients_text'),
+                        category_id=result.get('category_id'),
                     )
                     if calc_result.get('success'):
                         new_grade = calc_result['grade']

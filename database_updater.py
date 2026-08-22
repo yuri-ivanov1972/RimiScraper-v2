@@ -24,7 +24,6 @@ class DatabaseUpdater:
         self.db_config = db_config
         self.db_url = db_config.products_db_url
         
-        self.nutri_calculator = NutriscoreCalculator()
         self.ingredient_processor = None
         self.conn = None
         self._connect()
@@ -254,7 +253,15 @@ class DatabaseUpdater:
             nutri_score_points = None
             
             if not has_existing_nutriscore and energy_kj and energy_kj > 0 and carbs_sugars is not None and fat_saturated is not None and salt is not None and protein is not None:
-                nutri_result = self.nutri_calculator.calculate_single_product(
+                category_rows = self._execute_query(
+                    "SELECT category_id FROM products WHERE product_id = %s",
+                    (product_id,),
+                    fetch=True,
+                )
+                category_id = (
+                    category_rows[0].get("category_id") if category_rows else None
+                )
+                nutri_result = NutriscoreCalculator(self.conn).calculate_single_product(
                     energy_kj=energy_kj,
                     sugars=carbs_sugars,
                     saturated_fat=fat_saturated,
@@ -262,7 +269,7 @@ class DatabaseUpdater:
                     protein=protein,
                     fiber=int(fiber) if fiber else 0,
                     total_fat=fat_total,
-                    category_code=category_code
+                    category_id=category_id,
                 )
                 
                 if nutri_result['success']:

@@ -12,7 +12,7 @@ Supports 5 product categories:
 Usage:
     from nutriscore_calculator import NutriscoreCalculator
     
-    calculator = NutriscoreCalculator()
+    calculator = NutriscoreCalculator(database_connection)
     result = calculator.calculate_single_product(
         energy_kj=1500,
         sugars=10.5,
@@ -21,149 +21,24 @@ Usage:
         protein=12.0,
         fiber=5,
         total_fat=15.0,
-        category_code="SH-2-1-1"
+        category_id=42
     )
     print(f"Nutriscore: {result['grade']} (Score: {result['score']})")
 """
 
-from typing import Dict, Tuple, Any, Optional
+from typing import Any, Dict, Optional, Tuple
 
-FAT_OIL_NUT_CATEGORIES = {
-    'SH-11-7-16',  # Margarines
-    'SH-11-7-17',  # Butter
-    'SH-11-7-18',  # Butter with additives
-    'SH-11-7-19',  # Fat mixtures
-    'SH-4-3-11',   # Cooking oils - general
-    'SH-4-3-12',   # Cooking oils
-    'SH-4-3-13',   # Cooking oils
-    'SH-4-3-14',   # Coconut oil
-    'SH-4-3-15',   # Olive oil
-    'SH-4-3-16',   # Rapeseed oil
-    'SH-4-3-17',   # Sunflower oil
-    'SH-4-3-18',   # Special and other oils
-    'SH-4-3-19',   # Other oils
-    'SH-4-3-20',   # Other oils
-    'SH-13-9-17',  # Nuts and dried fruits - Others
-    'SH-13-9-18',  # Nuts and dried fruits - Nuts
-    'SH-13-9-20',  # Nuts and dried fruits - Seeds
-    'SH-13-9-23',  # Nuts and dried fruits - Dried fruit and nut mixes
-}
 
-CHEESE_CATEGORIES = {
-    'SH-11-9-25',  # Hard cheese
-    'SH-11-9-26',  # Fermented cheese
-    'SH-11-9-27',  # Feta, Mozzarella cheese
-    'SH-11-9-28',  # Processed cheese
-    'SH-11-9-29',  # Goat, sheep cheese
-    'SH-11-9-30',  # Cream cheese
-    'SH-11-9-31',  # Other cheese
-    'SH-11-9-32',  # Blue cheese
+_CATEGORY_TYPE_TO_SCORING_CATEGORY = {
+    "general": "general",
+    "beverage": "beverage",
+    "cheese": "cheese",
+    "red_meat": "red_meat",
+    "fat_oil_nut": "fats_oils_nuts",
+    "full_fvn": "general",
+    "half_fvn": "general",
 }
-
-RED_MEAT_CATEGORIES = {
-    'SH-6-10-26',  # Pārstrādāta gaļa - Auksti kūpinātā gaļa
-    'SH-6-10-27',  # Pārstrādāta gaļa - Karsti kūpinātā gaļa
-    'SH-6-11',     # Svaiga gaļa - Dažādu veidu maltā gaļa
-    'SH-6-1-1',    # Cīsiņi, sardeles, desiņas - Cīsiņi un sardeles
-    'SH-6-1-2',    # Cīsiņi, sardeles, desiņas - Grila desiņas
-    'SH-6-15-40',  # Svaiga gaļa - Cūkgaļa
-    'SH-6-15-41',  # Svaiga gaļa - Liellopa un teļa gaļa
-    'SH-6-15-42',  # Svaiga gaļa - Svaigas gaļas subprodukti
-    'SH-6-15-6',   # Svaiga gaļa - Jēra gaļa
-    'SH-6-17-49',  # Marinēta gaļa - Cūkgaļa
-    'SH-6-20-4',   # Mani Gardumi - Gatavās maltītes
-    'SH-6-21',     # Pārstrādāta gaļa - Vītinātās gaļas produkti
-    'SH-6-2-1',    # Desas un pastētes - Pastēte, aknu desas
-    'SH-6-2-3',    # Desas un pastētes - Auksti kūpinātās desas
-    'SH-6-2-4',    # Desas un pastētes - Karsti kūpinātās desas
-    'SH-6-2-5',    # Desas un pastētes - Vārītās desas
-    'SH-6-5-1',    # Gaļas maltītes - Galerti, gaļa želejā
-    'SH-6-5-2',    # Gaļas maltītes - Gaļas bumbiņas, nageti
-    'SH-6-5-3',    # Gaļas maltītes - Lēni pagatavotas gaļas maltītes
-    'SH-6-9-14',   # Zivju un gaļas konservi - Gaļas konservi
-}
-
-FULL_FVN_CATEGORIES = {
-    'SH-12-4-10',  # Frozen fruits and berries
-    'SH-12-4-11',  # Frozen vegetables and mixtures
-    'SH-12-4-12',  # Frozen potatoes
-    'SH-13-9-21',  # Nuts and dried fruits - Dried fruits and berries
-    'SH-2-1-2',    # Fruits - Apples and pears
-    'SH-2-1-3',    # Fruits - Bananas
-    'SH-2-1-4',    # Fruits - Citrus fruits
-    'SH-2-1-5',    # Fruits - Exotic fruits
-    'SH-2-1-6',    # Fruits - Melons and watermelons
-    'SH-2-1-7',    # Fruits - Stone fruits
-    'SH-2-1-9',    # Fruits - Berries
-    'SH-2-2',      # Vegetables
-    'SH-2-2-10',   # Vegetables - Beets and other root vegetables
-    'SH-2-2-12',   # Vegetables - Cucumbers and tomatoes
-    'SH-2-2-13',   # Vegetables - Potatoes and carrots
-    'SH-2-2-14',   # Vegetables - Legumes, corn and asparagus
-    'SH-2-2-16',   # Vegetables - Peppers
-    'SH-2-2-17',   # Vegetables - Processed vegetables
-    'SH-2-2-18',   # Vegetables - Cabbage and lettuce
-    'SH-2-2-19',   # Vegetables - Onions, leeks and garlic
-    'SH-2-2-20',   # Vegetables - Herbs
-    'SH-2-2-9',    # Vegetables - Pumpkins and squash
-}
-
-HALF_FVN_CATEGORIES = {
-    'SH-4-10-55',  # Canned products - Other canned vegetables
-    'SH-4-10-57',  # Canned products - Canned corn
-    'SH-4-10-58',  # Canned products - Canned peppers
-    'SH-4-10-59',  # Canned products - Canned beets
-    'SH-4-10-60',  # Canned products - Canned olives
-    'SH-4-10-62',  # Canned products - Canned fruits and berries
-    'SH-4-10-63',  # Canned products - Canned purees
-    'SH-4-10-65',  # Canned products - Canned cucumbers
-    'SH-4-10-66',  # Canned products - Canned legumes
-    'SH-4-10-67',  # Canned products - Canned tomatoes
-    'SH-4-10-68',  # Canned products - Canned peas
-    'SH-4-12-85',  # Sauces - Tomato sauces and pastes
-}
-
-BEVERAGE_CATEGORIES = {
-    'SH-5-1',      # Dzērieni - Bezalkoholiskais alus, sidri un vīni
-    'SH-5-1-1',    # Dzērieni - Bezalkoholiskais alus
-    'SH-5-1-2',    # Dzērieni - Bezalkoholiskais sidrs
-    'SH-5-1-3',    # Dzērieni - Bezalkoholiskais vīns
-    'SH-5-2',      # Dzērieni - Dzirkstošie bezalkoholiskie dzērieni
-    'SH-5-3',      # Dzērieni - Enerģijas dzērieni
-    'SH-5-4-5',    # Dzērieni - Limonādes - Gāzētas limonādes
-    'SH-5-4-6',    # Dzērieni - Limonādes - Kvass
-    'SH-5-4-7',    # Dzērieni - Limonādes - Ledus tējas
-    'SH-5-4-8',    # Dzērieni - Limonādes - Negāzētas limonādes
-    'SH-5-4-9',    # Dzērieni - Limonādes - Toniki
-    'SH-5-6-1',    # Dzērieni - Sīrupi - Kafijas un kokteiļu sīrupi
-    'SH-5-6-2',    # Dzērieni - Sīrupi - Ogu un augļu sīrupi
-    'SH-5-7-12',   # Dzērieni - Sporta dzērieni
-    'SH-5-7-13',   # Dzērieni - Vitaminizētais ūdens
-    'SH-5-8-1',    # Dzērieni - Sulas - Ābolu un miksētas ābolu
-    'SH-5-8-2',    # Dzērieni - Sulas - Citrusaugļu
-    'SH-5-8-3',    # Dzērieni - Sulas - Ogu
-    'SH-5-8-4',    # Dzērieni - Sulas - Dārzeņu
-    'SH-5-8-5',    # Dzērieni - Sulas - Multiaugļu
-    'SH-5-8-6',    # Dzērieni - Sulas - Citu augļu sulas
-    'SH-5-11',     # Dzērieni - Svaigas sulas un smūtiji
-    'SH-5-11-1',   # Dzērieni - Svaigas sulas - Augļu sulas un smūtiji
-    'SH-5-11-2',   # Dzērieni - Svaigas sulas - Dārzeņu sulas un smūtiji
-    'SH-5-12',     # Dzērieni - Ūdens (parent category)
-    'SH-5-12-18',  # Dzērieni - Ūdens - Gāzēts ūdens
-    'SH-5-12-19',  # Dzērieni - Ūdens - Negāzēts ūdens
-    'SH-5-12-20',  # Dzērieni - Ūdens - Ūdens ar garšām
-    'SH-12-1-1',   # Ledus (ice cubes — frozen water, zero nutrition → grade A)
-    'SH-11-8-1',   # Pilnpiens (whole milk)
-    'SH-11-8-2',   # Other milk
-    'SH-11-8-22',  # Pasterizēts piens (pasteurized milk)
-    'SH-11-8-23',  # Piens ar piedevām (milk with additives)
-    'SH-11-8-24',  # UHT piens (UHT milk)
-    'SH-11-3-8',   # Kefīrs un kefīra dzērieni (kefir drinks)
-    'SH-11-3-9',   # Other fermented drinks
-    'SH-11-2-5',   # Dzeramais jogurts - drinking yogurt
-    'SH-4-14-93',  # Kokosa piens (coconut milk) - plant drink
-    'SH-11-10-2',  # Augu dzērieni (plant-based drinks)
-}
+_CATEGORY_TYPE_TO_FVN_PERCENTAGE = {"full_fvn": 100.0, "half_fvn": 50.0}
 
 LATVIAN_SWEETENER_INDICATORS = [
     'saldināšanas līdzeklis', 'saldinātājs', 'saldinātāji',
@@ -371,12 +246,10 @@ class NutriscoreCalculator:
     Can be used by other Replit applications.
     """
     
-    def __init__(self):
-        self.fat_oil_nut_categories = FAT_OIL_NUT_CATEGORIES
-        self.cheese_categories = CHEESE_CATEGORIES
-        self.red_meat_categories = RED_MEAT_CATEGORIES
-        self.full_fvn_categories = FULL_FVN_CATEGORIES
-        self.half_fvn_categories = HALF_FVN_CATEGORIES
+    def __init__(self, connection=None):
+        """Create a calculator backed by an existing database connection."""
+        self.connection = connection
+        self._category_type_cache: Dict[int, str] = {}
     
     def _detect_sweeteners(self, product_name: Optional[str], ingredients_text: Optional[str] = None) -> bool:
         """Detect if product likely contains artificial sweeteners based on name/ingredients.
@@ -393,41 +266,66 @@ class NutriscoreCalculator:
         
         return any(indicator in text_to_check for indicator in LATVIAN_SWEETENER_INDICATORS)
     
-    def _determine_category(self, category_code: Optional[str]) -> str:
-        """Determine the Nutri-Score category based on product category code."""
-        if not category_code:
-            return 'general'
-        
-        if category_code in BEVERAGE_CATEGORIES:
-            return 'beverage'
-        
-        if category_code in self.fat_oil_nut_categories:
-            return 'fats_oils_nuts'
-        
-        if category_code in self.cheese_categories:
-            return 'cheese'
-        
-        if category_code in self.red_meat_categories:
-            return 'red_meat'
-        
-        return 'general'
-    
-    def _get_fvl_percentage(self, category_code: Optional[str]) -> float:
-        """Get fruits/vegetables/legumes percentage based on category."""
-        if not category_code:
-            return 0
-        
-        if category_code in self.full_fvn_categories:
-            return 100
-        
-        if category_code in self.half_fvn_categories:
-            return 50
-        
-        for prefix in ['SH-2-1', 'SH-2-2']:
-            if category_code.startswith(prefix):
-                return 100
-        
-        return 0
+    def _get_category_type(self, category_id: Optional[int]) -> str:
+        """Read and cache one saved Nutri-Score type from normalized_categories."""
+        if category_id is None or category_id == "":
+            raise ValueError("A category_id is required for Nutri-Score calculation.")
+        if self.connection is None:
+            raise RuntimeError(
+                "A database connection is required to resolve the saved Nutri-Score category type."
+            )
+
+        try:
+            cache_key = int(category_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"Invalid category_id: {category_id!r}") from exc
+
+        if cache_key in self._category_type_cache:
+            return self._category_type_cache[cache_key]
+
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT nutriscore_category_type
+                    FROM normalized_categories
+                    WHERE category_id = %s
+                    """,
+                    (cache_key,),
+                )
+                row = cursor.fetchone()
+        except Exception as exc:
+            raise RuntimeError(
+                f"Could not load Nutri-Score category type for category_id {cache_key}: {exc}"
+            ) from exc
+
+        if row is None:
+            raise LookupError(f"No normalized category exists for category_id {cache_key}.")
+
+        stored_type = (
+            row.get("nutriscore_category_type")
+            if hasattr(row, "get")
+            else row[0]
+        )
+        category_type = stored_type or "general"
+        if category_type not in _CATEGORY_TYPE_TO_SCORING_CATEGORY:
+            raise ValueError(
+                f"Unsupported Nutri-Score category type {category_type!r} "
+                f"for category_id {cache_key}."
+            )
+
+        self._category_type_cache[cache_key] = category_type
+        return category_type
+
+    @staticmethod
+    def _determine_category(category_type: str) -> str:
+        """Map the saved category type to the official scoring category."""
+        return _CATEGORY_TYPE_TO_SCORING_CATEGORY[category_type]
+
+    @staticmethod
+    def _get_fvl_percentage(category_type: str) -> float:
+        """Map the saved category type to its default FVN percentage."""
+        return _CATEGORY_TYPE_TO_FVN_PERCENTAGE.get(category_type, 0.0)
     
     def calculate_single_product(
         self,
@@ -442,7 +340,8 @@ class NutriscoreCalculator:
         category_code: Optional[str] = None,
         product_name: Optional[str] = None,
         ingredients_text: Optional[str] = None,
-        has_sweeteners: Optional[bool] = None
+        has_sweeteners: Optional[bool] = None,
+        category_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Calculate Nutri-Score for a single product using 2024 algorithm.
@@ -455,21 +354,23 @@ class NutriscoreCalculator:
             protein: Protein in g/100g
             fiber: Fiber in g/100g (default: 0)
             total_fat: Total fat in g/100g (needed for oils/fats calculation)
-            fruits_veg_nuts: % fruits/vegetables/nuts (default: 0, auto-detected from category)
-            category_code: Product category code (e.g., "SH-2-1-1")
+            fruits_veg_nuts: % fruits/vegetables/nuts (default: 0, auto-detected from saved type)
+            category_code: Retained product metadata; it does not affect classification.
             product_name: Product name (for sweetener detection)
             ingredients_text: Ingredients list (for sweetener detection)
             has_sweeteners: Override sweetener detection (True/False/None=auto)
+            category_id: Required normalized category ID used to load the saved type.
         
         Returns:
             Dictionary with score, grade, and detailed breakdown
         """
         try:
-            ns_category = self._determine_category(category_code)
+            category_type = self._get_category_type(category_id)
+            ns_category = self._determine_category(category_type)
             
             fvl_pct = fruits_veg_nuts
             if fvl_pct == 0:
-                fvl_pct = self._get_fvl_percentage(category_code)
+                fvl_pct = self._get_fvl_percentage(category_type)
             
             if has_sweeteners is None and ns_category == 'beverage':
                 has_sweeteners = self._detect_sweeteners(product_name, ingredients_text)
@@ -498,6 +399,8 @@ class NutriscoreCalculator:
                 'protein_status': result['protein_status'],
                 'components': result['components'],
                 'classification': {
+                    'category_id': category_id,
+                    'category_type': category_type,
                     'nutriscore_category': ns_category,
                     'is_beverage': ns_category == 'beverage',
                     'is_fat_oil_nut': ns_category == 'fats_oils_nuts',
@@ -539,7 +442,8 @@ class NutriscoreCalculator:
                 category_code=product.get('category_code'),
                 product_name=product.get('product_name'),
                 ingredients_text=product.get('ingredients_text'),
-                has_sweeteners=product.get('has_sweeteners')
+                has_sweeteners=product.get('has_sweeteners'),
+                category_id=product.get('category_id'),
             )
             result['product_id'] = product_id
             results.append(result)
@@ -623,9 +527,6 @@ def calculate_nutriscore(
     }
     
     return result['score'], result['grade'], components
-
-
-FAT_CATEGORIES = FAT_OIL_NUT_CATEGORIES
 
 
 if __name__ == '__main__':

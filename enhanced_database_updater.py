@@ -358,16 +358,15 @@ class EnhancedDatabaseUpdater:
             """
             nutrition_result = self._execute_query(nutrition_query, (product_id,), fetch=True)
             
-            # Get product name and category code for proper Nutri-Score category detection
+            # Get product name and category ID for saved Nutri-Score type lookup.
             product_query = """
-                SELECT p.name, nc.rimi_category_code 
+                SELECT p.name, p.category_id
                 FROM products p
-                LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
                 WHERE p.product_id = %s
             """
             product_result = self._execute_query(product_query, (product_id,), fetch=True)
             product_name = product_result[0].get('name') if product_result else None
-            category_code = product_result[0].get('rimi_category_code') if product_result else None
+            category_id = product_result[0].get('category_id') if product_result else None
             
             if not nutrition_result:
                 self.status_callback("No nutrition data found for nutri-score calculation")
@@ -451,11 +450,11 @@ class EnhancedDatabaseUpdater:
                 self.status_callback(f"  - protein: {nutrition.get('protein', 0) or 0}")
                 self.status_callback(f"  - fiber: {nutrition.get('fiber', 0) or 0}")
                 self.status_callback(f"  - total_fat: {nutrition.get('fat_total', 0) or 0}")
-                self.status_callback(f"  - category_code: {category_code}")
+                self.status_callback(f"  - category_id: {category_id}")
                 self.status_callback(f"  - product_name: {product_name}")
                 self.status_callback(f"  - ingredients_text: {ingredients_text[:100]}..." if len(ingredients_text) > 100 else f"  - ingredients_text: {ingredients_text}")
                 
-                calculator = NutriscoreCalculator()
+                calculator = NutriscoreCalculator(self.conn)
                 nutri_result = calculator.calculate_single_product(
                     energy_kj=energy_kj,
                     sugars=nutrition.get('carbs_sugars', 0) or 0,
@@ -464,9 +463,9 @@ class EnhancedDatabaseUpdater:
                     protein=nutrition.get('protein', 0) or 0,
                     fiber=nutrition.get('fiber', 0) or 0,
                     total_fat=nutrition.get('fat_total', 0) or 0,
-                    category_code=category_code,
                     product_name=product_name,
-                    ingredients_text=ingredients_text
+                    ingredients_text=ingredients_text,
+                    category_id=category_id,
                 )
                 
                 # Handle result from NutriscoreCalculator

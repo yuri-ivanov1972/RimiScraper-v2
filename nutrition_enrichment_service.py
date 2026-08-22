@@ -19,7 +19,7 @@ from decimal import Decimal
 
 from food_translator import FoodTranslator, TranslationResult
 from usda_enrichment import USDAClient, USDAFoodMatch, NutritionData
-from nutriscore_calculator import calculate_nutriscore
+from nutriscore_calculator import NutriscoreCalculator
 
 
 @dataclass
@@ -28,6 +28,7 @@ class ProductForEnrichment:
     product_id: int
     sku: str
     name: str
+    category_id: Optional[int] = None
     category_name: Optional[str] = None
     current_nutrition: Optional[Dict] = None
     
@@ -36,6 +37,7 @@ class ProductForEnrichment:
             'product_id': self.product_id,
             'sku': self.sku,
             'name': self.name,
+            'category_id': self.category_id,
             'category_name': self.category_name,
             'current_nutrition': self.current_nutrition
         }
@@ -170,6 +172,7 @@ class NutritionEnrichmentService:
                         p.product_id,
                         p.sku,
                         p.name,
+                        p.category_id,
                         nc.name_lv as category_name,
                         nf.energy_kcal,
                         nf.fat_total,
@@ -208,6 +211,7 @@ class NutritionEnrichmentService:
                         product_id=row['product_id'],
                         sku=row['sku'],
                         name=row['name'],
+                        category_id=row['category_id'],
                         category_name=row['category_name'],
                         current_nutrition=current_nutrition
                     ))
@@ -353,7 +357,12 @@ class NutritionEnrichmentService:
                     WHERE product_id = %s
                 """, (match.product.product_id,))
                 
-                nutri_score, nutri_grade = self._calculate_nutriscore(nutrition)
+                nutri_score, nutri_grade = self._calculate_nutriscore(
+                    connection=conn,
+                    nutrition=nutrition,
+                    category_id=match.product.category_id,
+                    product_name=match.product.name,
+                )
                 
                 if nutri_score is not None:
                     cur.execute("""
@@ -428,7 +437,13 @@ class NutritionEnrichmentService:
         finally:
             conn.close()
     
-    def _calculate_nutriscore(self, nutrition: NutritionData) -> tuple:
+    def _calculate_nutriscore(
+        self,
+        connection,
+        nutrition: NutritionData,
+        category_id: Optional[int],
+        product_name: Optional[str] = None,
+    ) -> tuple:
         """Calculate nutri-score points and grade from nutrition data
         
         Returns:
@@ -438,7 +453,7 @@ class NutritionEnrichmentService:
             energy_kj = nutrition.energy_kj or (nutrition.energy_kcal * 4.184 if nutrition.energy_kcal else 0)
             sugars = nutrition.carbs_sugars or 0
             saturated_fat = nutrition.fat_saturated or 0
-            sodium = (nutrition.salt or 0) * 400
+            salt = nutrition.salt or 0
             protein = nutrition.protein or 0
             fiber = nutrition.fiber or 0
             
@@ -446,20 +461,24 @@ class NutritionEnrichmentService:
                 self.status_callback("⚠️ Insufficient data for Nutri-Score calculation")
                 return (None, None)
             
-            score, grade, _ = calculate_nutriscore(
+            result = NutriscoreCalculator(connection).calculate_single_product(
                 energy_kj=energy_kj,
                 sugars=sugars,
                 saturated_fat=saturated_fat,
-                sodium=sodium,
+                salt=salt,
                 protein=protein,
                 fiber=fiber,
-                fruits_veg_nuts=0,
-                is_beverage=False,
-                is_fat=False,
-                is_cheese=False
+                total_fat=nutrition.fat_total,
+                product_name=product_name,
+                category_id=category_id,
             )
-            
-            return (score, grade)
+            if not result.get("success"):
+                self.status_callback(
+                    f"⚠️ Nutri-Score calculation skipped: {result.get('error')}"
+                )
+                return (None, None)
+
+            return (result["score"], result["grade"])
             
         except Exception as e:
             self.status_callback(f"⚠️ Error calculating Nutri-Score: {str(e)}")
