@@ -1,5 +1,6 @@
 """Focused tests for the Nutri-Score category type seeding rules."""
 
+from io import StringIO
 import os
 import unittest
 from unittest.mock import MagicMock, patch
@@ -100,6 +101,42 @@ class SeedNutriscoreCategoryTypesTests(unittest.TestCase):
                 ("general", 4),
             ],
         )
+        conn.close.assert_called_once()
+
+    def test_dry_run_previews_changes_without_updates(self):
+        cursor = MagicMock()
+        cursor.__enter__.return_value = cursor
+        cursor.fetchall.return_value = [
+            (1, "SH-2-1", "general", False),
+            (2, "SH-5-3", "beverage", True),
+            (3, None, "general", True),
+        ]
+
+        conn = MagicMock()
+        conn.__enter__.return_value = conn
+        conn.cursor.return_value = cursor
+
+        with patch(
+            "seed_nutriscore_category_types.get_database_url",
+            return_value="test-database-url",
+        ), patch(
+            "seed_nutriscore_category_types.psycopg2.connect",
+            return_value=conn,
+        ), patch("sys.stdout", new_callable=StringIO) as stdout:
+            seed("dev", dry_run=True)
+
+        update_calls = [
+            call
+            for call in cursor.execute.call_args_list
+            if "UPDATE normalized_categories" in call.args[0]
+        ]
+        self.assertEqual(update_calls, [])
+        self.assertIn(
+            "Dry-run: no data written; 1 categories will change",
+            stdout.getvalue(),
+        )
+        self.assertIn("general", stdout.getvalue())
+        self.assertIn("beverage", stdout.getvalue())
         conn.close.assert_called_once()
 
 

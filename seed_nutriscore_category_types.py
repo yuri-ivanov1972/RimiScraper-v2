@@ -8,6 +8,7 @@ database. It never updates Dev and Prod in the same run.
 Usage:
     python seed_nutriscore_category_types.py --environment dev
     python seed_nutriscore_category_types.py --environment prod
+    python seed_nutriscore_category_types.py --environment dev --dry-run
 
 The database URLs are read from:
     dev  -> NEON_DATABASE_URL (DATABASE_URL is accepted as a compatibility fallback)
@@ -63,6 +64,11 @@ def parse_args() -> argparse.Namespace:
             "Database to update: dev uses NEON_DATABASE_URL "
             "(DATABASE_URL fallback); prod uses PROD_DATABASE_URL."
         ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and preview assignments without writing any data.",
     )
     return parser.parse_args()
 
@@ -136,8 +142,16 @@ def print_summary(
     total_categories: int,
     assigned_counts: Counter[str],
     missing_codes: Iterable[str],
+    changed_count: int,
+    dry_run: bool,
 ) -> None:
-    print(f"Updated {total_categories} categories in {environment}.")
+    if dry_run:
+        print(
+            f"Dry-run: no data written; {changed_count} categories will change "
+            f"in {environment}."
+        )
+    else:
+        print(f"Updated {total_categories} categories in {environment}.")
     print("Assignments:")
     for category_type in ("general", *TYPE_SETS.keys()):
         print(f"  {category_type:12s} {assigned_counts.get(category_type, 0):>4}")
@@ -151,7 +165,7 @@ def print_summary(
             print(f"  {code}")
 
 
-def seed(environment: str) -> None:
+def seed(environment: str, dry_run: bool = False) -> None:
     source_mapping = build_source_mapping()
     database_url = get_database_url(environment)
 
@@ -162,7 +176,10 @@ def seed(environment: str) -> None:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT category_id, UPPER(TRIM(rimi_category_code))
+                    SELECT category_id,
+                           UPPER(TRIM(rimi_category_code)),
+                           nutriscore_category_type,
+                           nutriscore_category_type_explicit
                     FROM normalized_categories
                     ORDER BY category_id
                     """
@@ -173,46 +190,68 @@ def seed(environment: str) -> None:
                         "normalized_categories is empty; refusing to seed an empty schema."
                     )
 
-                database_codes = {code for _, code in categories if code}
+                database_codes = {
+                    category[1] for category in categories if category[1]
+                }
                 missing_codes = set(source_mapping) - database_codes
+                planned_assignments = []
+                changed_count = 0
+                for category in categories:
+                    category_id, code = category[:2]
+                    category_type = category_type_for_code(code, source_mapping)
+                    planned_assignments.append((category_id, category_type))
+
+                    # The two optional fields make the comparison work with
+                    # databases that predate the explicit assignment marker.
+                    current_type = category[2] if len(category) > 2 else None
+                    current_explicit = category[3] if len(category) > 3 else None
+                    if current_type != category_type or current_explicit is not True:
+                        changed_count += 1
 
                 # Rebuild every assignment, including prefix-based Full FVN
                 # descendants. This also removes any old manual assignments.
-                for category_id, code in categories:
-                    category_type = category_type_for_code(code, source_mapping)
+                if not dry_run:
+                    for category_id, category_type in planned_assignments:
+                        cursor.execute(
+                            """
+                            UPDATE normalized_categories
+                            SET nutriscore_category_type = %s,
+                                nutriscore_category_type_explicit = TRUE
+                            WHERE category_id = %s
+                            """,
+                            (category_type, category_id),
+                        )
+
                     cursor.execute(
                         """
-                        UPDATE normalized_categories
-                        SET nutriscore_category_type = %s,
-                            nutriscore_category_type_explicit = TRUE
-                        WHERE category_id = %s
-                        """,
-                        (category_type, category_id),
+                        SELECT nutriscore_category_type, COUNT(*)
+                        FROM normalized_categories
+                        GROUP BY nutriscore_category_type
+                        """
+                    )
+                    assigned_counts = Counter(
+                        {
+                            category_type: count
+                            for category_type, count in cursor.fetchall()
+                        }
                     )
 
-                cursor.execute(
-                    """
-                    SELECT nutriscore_category_type, COUNT(*)
-                    FROM normalized_categories
-                    GROUP BY nutriscore_category_type
-                    """
-                )
-                assigned_counts = Counter(
-                    {category_type: count for category_type, count in cursor.fetchall()}
-                )
-
-                cursor.execute(
-                    """
-                    SELECT COUNT(*)
-                    FROM normalized_categories
-                    WHERE nutriscore_category_type IS NULL
-                       OR nutriscore_category_type_explicit IS NOT TRUE
-                    """
-                )
-                incomplete_count = cursor.fetchone()[0]
-                if incomplete_count:
-                    raise RuntimeError(
-                        f"Verification failed: {incomplete_count} categories are not fully assigned."
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM normalized_categories
+                        WHERE nutriscore_category_type IS NULL
+                           OR nutriscore_category_type_explicit IS NOT TRUE
+                        """
+                    )
+                    incomplete_count = cursor.fetchone()[0]
+                    if incomplete_count:
+                        raise RuntimeError(
+                            f"Verification failed: {incomplete_count} categories are not fully assigned."
+                        )
+                else:
+                    assigned_counts = Counter(
+                        category_type for _, category_type in planned_assignments
                     )
 
                 total_categories = len(categories)
@@ -228,6 +267,8 @@ def seed(environment: str) -> None:
             total_categories,
             assigned_counts,
             missing_codes,
+            changed_count,
+            dry_run,
         )
     except Exception:
         if conn is not None:
@@ -241,7 +282,7 @@ def seed(environment: str) -> None:
 def main() -> int:
     args = parse_args()
     try:
-        seed(args.environment)
+        seed(args.environment, dry_run=args.dry_run)
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
