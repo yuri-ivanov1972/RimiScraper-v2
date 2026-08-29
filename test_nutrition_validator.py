@@ -1,0 +1,392 @@
+#!/usr/bin/env python3
+"""Focused tests for rule-based ingredient/nutrition validation."""
+
+import unittest
+
+from nutrition_validation_backfill import validate_existing_products
+from nutrition_validator import (
+    NutritionValidator,
+    enrich_mapped_ingredients,
+    normalize_ingredient_text,
+    summarize_validation_results,
+)
+
+
+class NutritionValidatorTests(unittest.TestCase):
+    def setUp(self):
+        self.validator = NutritionValidator()
+
+    def validate(self, ingredients, **nutrition):
+        return self.validator.validate(ingredients, nutrition)
+
+    @staticmethod
+    def rules(result):
+        return {reason["rule"] for reason in result["reasons"]}
+
+    def assert_rule(self, rule, ingredients=(), **nutrition):
+        result = self.validate(ingredients, **nutrition)
+        self.assertIn(rule, self.rules(result), result)
+        return result
+
+    def test_latvian_normalization_and_term_boundaries(self):
+        self.assertEqual(normalize_ingredient_text("  SĀLS),  "), "sāls")
+        result = self.validate(["sālsskābe"], salt=0)
+        self.assertNotIn("salt_present_but_salt_zero", self.rules(result))
+
+    def test_dairy_with_zero_saturated_fat(self):
+        result = self.assert_rule(
+            "milk_present_but_saturated_fat_zero",
+            ["pasterizēts piens", "saldais krējums"],
+            fat_saturated=0,
+        )
+        finding = next(
+            reason for reason in result["reasons"]
+            if reason["rule"] == "milk_present_but_saturated_fat_zero"
+        )
+        self.assertEqual(finding["score"], 8)
+        self.assertEqual(len(finding["ingredient_evidence"]), 2)
+
+    def test_skimmed_milk_is_not_automatically_flagged(self):
+        result = self.validate(
+            ["vājpiena pulveris"],
+            fat_total=0.1,
+            fat_saturated=0.0,
+        )
+        self.assertNotIn(
+            "milk_present_but_saturated_fat_zero",
+            self.rules(result),
+        )
+
+    def test_fat_or_oil_with_zero_total_fat(self):
+        self.assert_rule(
+            "fat_ingredient_present_but_fat_zero",
+            ["saulespuķu eļļa"],
+            fat_total=0,
+        )
+
+    def test_fat_rich_ingredient_with_zero_saturated_fat(self):
+        self.assert_rule(
+            "high_saturated_fat_ingredient_but_saturated_fat_zero",
+            ["kokosriekstu eļļa"],
+            fat_saturated=0,
+        )
+
+    def test_sugar_with_zero_sugars(self):
+        result = self.assert_rule(
+            "sugar_ingredient_present_but_sugars_zero",
+            ["glikozes-fruktozes sīrups"],
+            carbs_sugars=0,
+        )
+        self.assertEqual(result["suspicion_score"], 8)
+        self.assertEqual(result["suspicion_level"], "medium")
+
+    def test_nonzero_sugars_are_not_flagged(self):
+        result = self.validate(["cukurs"], carbs_sugars=0.1)
+        self.assertNotIn(
+            "sugar_ingredient_present_but_sugars_zero",
+            self.rules(result),
+        )
+
+    def test_carbohydrate_ingredient_with_zero_carbohydrates(self):
+        self.assert_rule(
+            "carbohydrate_ingredient_present_but_carbohydrates_zero",
+            ["kviešu milti"],
+            carbs_total=0,
+        )
+
+    def test_fruit_with_zero_sugars(self):
+        result = self.assert_rule(
+            "fruit_present_but_sugars_zero",
+            ["zemeņu biezenis"],
+            carbs_sugars=0,
+        )
+        self.assertEqual(result["suspicion_level"], "low")
+
+    def test_salt_with_zero_salt(self):
+        self.assert_rule(
+            "salt_present_but_salt_zero",
+            ["jūras sāls"],
+            salt=0,
+        )
+
+    def test_salty_ingredient_with_low_salt(self):
+        self.assert_rule(
+            "salty_ingredient_but_low_salt",
+            ["sojas mērce"],
+            salt=0.05,
+        )
+
+    def test_protein_ingredient_with_zero_protein(self):
+        self.assert_rule(
+            "protein_ingredient_present_but_protein_zero",
+            ["vistas gaļa"],
+            protein=0,
+        )
+
+    def test_nuts_or_seeds_with_zero_fat(self):
+        self.assert_rule(
+            "nuts_or_seeds_present_but_fat_zero",
+            ["saulespuķu sēklas"],
+            fat_total=0,
+        )
+
+    def test_cocoa_checks_each_zero_field(self):
+        result = self.validate(
+            ["kakao pulveris"],
+            fat_total=0,
+            fat_saturated=0,
+            carbs_sugars=0,
+        )
+        self.assertTrue({
+            "cocoa_or_chocolate_but_fat_zero",
+            "cocoa_or_chocolate_but_saturated_fat_zero",
+            "cocoa_or_chocolate_but_sugars_zero",
+        }.issubset(self.rules(result)))
+
+    def test_saturated_fat_cannot_exceed_total_fat(self):
+        result = self.assert_rule(
+            "saturated_fat_exceeds_total_fat",
+            fat_total=5,
+            fat_saturated=8,
+        )
+        self.assertEqual(result["suspicion_level"], "high")
+
+    def test_sugars_cannot_exceed_carbohydrates(self):
+        self.assert_rule(
+            "sugars_exceed_carbohydrates",
+            carbs_total=10,
+            carbs_sugars=15,
+        )
+
+    def test_energy_inconsistency_uses_configured_tolerance(self):
+        result = self.assert_rule(
+            "energy_inconsistent_with_macronutrients",
+            energy_kcal=400,
+            fat_total=10,
+            carbs_total=10,
+            protein=10,
+        )
+        finding = next(
+            reason for reason in result["reasons"]
+            if reason["rule"] == "energy_inconsistent_with_macronutrients"
+        )
+        self.assertEqual(finding["estimated_energy_kcal"], 170)
+
+    def test_energy_rounding_difference_is_not_flagged(self):
+        result = self.validate(
+            [],
+            energy_kcal=175,
+            fat_total=10,
+            carbs_total=10,
+            protein=10,
+        )
+        self.assertNotIn(
+            "energy_inconsistent_with_macronutrients",
+            self.rules(result),
+        )
+
+    def test_zero_value_cluster_adds_one_reason(self):
+        result = self.validate(
+            ["piens", "krējums", "cukurs"],
+            fat_total=0,
+            fat_saturated=0,
+            carbs_sugars=0,
+        )
+        rules = [
+            reason["rule"] for reason in result["reasons"]
+            if reason["rule"] == "multiple_nutrition_values_inconsistent_with_ingredients"
+        ]
+        self.assertEqual(rules, [
+            "multiple_nutrition_values_inconsistent_with_ingredients"
+        ])
+
+    def test_advisory_and_tiny_quantity_are_not_definite_evidence(self):
+        advisory = self.validate(["var saturēt pienu"], fat_saturated=0)
+        tiny = self.validate(
+            [{"ingredient": "cukurs", "percentage": 0.5}],
+            carbs_sugars=0,
+        )
+        self.assertEqual(advisory["reasons"], [])
+        self.assertEqual(tiny["reasons"], [])
+
+    def test_raw_label_only_enriches_parsed_mapping_confidence(self):
+        tiny = enrich_mapped_ingredients(
+            [{"ingredient": "cukurs"}],
+            "Sastāvdaļas: cukurs (0,5%), ūdens",
+        )
+        advisory = enrich_mapped_ingredients(
+            [{"ingredient": "var saturēt pienu"}],
+            "Var saturēt pienu un riekstus.",
+        )
+        self.assertEqual(tiny[0]["percentage"], 0.5)
+        self.assertTrue(advisory[0]["weak"])
+        self.assertEqual(
+            self.validate(tiny, carbs_sugars=0)["reasons"],
+            [],
+        )
+        self.assertEqual(
+            self.validate(advisory, fat_saturated=0)["reasons"],
+            [],
+        )
+
+    def test_advisory_clause_marks_split_latvian_and_english_items_only(self):
+        latvian = enrich_mapped_ingredients(
+            [
+                {"ingredient": "var ietvert pienu"},
+                {"ingredient": "riekstus"},
+            ],
+            "Var ietvert pienu un riekstus.",
+        )
+        english = enrich_mapped_ingredients(
+            [
+                {"ingredient": "may contain milk"},
+                {"ingredient": "nuts"},
+            ],
+            "May contain milk and nuts.",
+        )
+        self.assertTrue(latvian[0]["weak"])
+        self.assertTrue(latvian[1]["weak"])
+        self.assertTrue(english[0]["weak"])
+        self.assertTrue(english[1]["weak"])
+
+    def test_definite_dairy_is_not_weakened_by_separate_advisory(self):
+        enriched = enrich_mapped_ingredients(
+            [
+                {"ingredient": "piena pulveris"},
+                {"ingredient": "var saturēt pienu"},
+            ],
+            "Sastāvdaļas: piena pulveris. Var saturēt pienu.",
+        )
+        self.assertNotIn("weak", enriched[0])
+        self.assertTrue(enriched[1]["weak"])
+        result = self.validate(enriched, fat_saturated=0)
+        self.assertIn(
+            "milk_present_but_saturated_fat_zero",
+            self.rules(result),
+        )
+
+    def test_duplicate_ingredients_do_not_multiply_rule_score(self):
+        result = self.validate(
+            ["cukurs", "cukurs", "cukurs"],
+            carbs_sugars=0,
+        )
+        matching = [
+            reason for reason in result["reasons"]
+            if reason["rule"] == "sugar_ingredient_present_but_sugars_zero"
+        ]
+        self.assertEqual(len(matching), 1)
+        self.assertEqual(matching[0]["score"], 8)
+
+    def test_missing_values_do_not_create_false_findings(self):
+        result = self.validate(["cukurs", "sāls", "vistas gaļa"])
+        self.assertEqual(result, {
+            "suspicion_level": "none",
+            "suspicion_score": 0,
+            "reasons": [],
+        })
+
+    def test_summary_counts_levels_rules_and_percentages(self):
+        suspicious = self.validate(["cukurs"], carbs_sugars=0)
+        clean = self.validate(["ūdens"], carbs_sugars=0)
+        summary = summarize_validation_results([suspicious, clean])
+        self.assertEqual(summary["products_checked"], 2)
+        self.assertEqual(summary["levels"]["medium"], 1)
+        self.assertEqual(summary["levels"]["none"], 1)
+        self.assertEqual(
+            summary["rule_percentages"]["sugar_ingredient_present_but_sugars_zero"],
+            50.0,
+        )
+
+
+class FakeCursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.rows = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        if "FROM products p LEFT JOIN nutritionfacts" in normalized:
+            last_id, limit = params
+            self.rows = [
+                row for row in self.connection.products
+                if row["product_id"] > last_id
+            ][:limit]
+        elif "FROM ingredient_product_mapping" in normalized:
+            skus = set(params[0])
+            self.rows = [
+                row for row in self.connection.ingredients
+                if row["product_sku"] in skus
+            ]
+        elif normalized.startswith("INSERT INTO nutrition_validation"):
+            product_id, level, score, reasons = params
+            self.connection.validation_rows[product_id] = {
+                "suspicion_level": level,
+                "suspicion_score": score,
+                "reasons": reasons,
+            }
+            self.rows = []
+        elif normalized.startswith(("SAVEPOINT", "RELEASE", "ROLLBACK TO")):
+            self.rows = []
+        else:
+            raise AssertionError(f"Unexpected query: {normalized}")
+
+    def fetchall(self):
+        return list(self.rows)
+
+
+class FakeConnection:
+    def __init__(self):
+        self.products = [{
+            "product_id": 1,
+            "sku": "SKU-1",
+            "ingredients_text": "cukurs",
+            "energy_kcal": None,
+            "energy_kj": None,
+            "fat_total": None,
+            "fat_saturated": None,
+            "carbs_total": 10,
+            "carbs_sugars": 0,
+            "protein": None,
+            "salt": None,
+            "fiber": None,
+        }]
+        self.ingredients = [{
+            "product_sku": "SKU-1",
+            "ingredient": "cukurs",
+            "clean_name": None,
+        }]
+        self.validation_rows = {}
+        self.commits = 0
+
+    def cursor(self, cursor_factory=None):
+        return FakeCursor(self)
+
+    def commit(self):
+        self.commits += 1
+
+
+class BackfillTests(unittest.TestCase):
+    def test_backfill_upserts_one_current_result_on_repeated_runs(self):
+        connection = FakeConnection()
+        first = validate_existing_products(connection, batch_size=1)
+        second = validate_existing_products(connection, batch_size=1)
+
+        self.assertEqual(first["attempted"], 1)
+        self.assertEqual(second["attempted"], 1)
+        self.assertEqual(first["failures"], [])
+        self.assertEqual(len(connection.validation_rows), 1)
+        self.assertEqual(
+            connection.validation_rows[1]["suspicion_level"],
+            "medium",
+        )
+        self.assertEqual(connection.commits, 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

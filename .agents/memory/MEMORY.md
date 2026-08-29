@@ -2,3 +2,4 @@
 - [Worker health monitoring](worker-health-monitoring.md) — update_statistics was empty, daily_update_logs unused, job_events metadata blank; 4-task alarm system added Jun 2026.
 - [Product NOVA classification](product-nova-classification.md) — nova_score + nova_source on products table; additive_override (avoid/limit) beats category_inherited; all 2966 products scored Jun 2026.
 - [Nutri-Score category typing](nutriscore-category-typing.md) — all table-backed score calculations resolve saved category types from normalized categories; category codes never classify products at runtime.
+- [Nutrition validation rollout](nutrition-validation-rollout.md) — first release is a development-only backfill; parsed mappings drive rules and raw labels only restore confidence metadata.
