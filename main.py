@@ -1954,7 +1954,7 @@ def section_nutrition_validation_report():
         st.info("No rule findings were recorded.")
 
     st.subheader("Suspicious products")
-    filter_columns = st.columns([1.2, 1, 1])
+    filter_columns = st.columns([1.2, 1, 1, 1])
     with filter_columns[0]:
         selected_level = st.selectbox(
             "Severity",
@@ -1962,12 +1962,10 @@ def section_nutrition_validation_report():
             key="validation_report_level",
         )
     with filter_columns[1]:
-        report_limit = st.number_input(
-            "Rows to show",
-            min_value=10,
-            max_value=200,
-            value=50,
-            step=10,
+        page_size = st.selectbox(
+            "Rows per page",
+            [25, 50, 100, 200],
+            index=1,
             key="validation_report_limit",
         )
     with filter_columns[2]:
@@ -1976,6 +1974,11 @@ def section_nutrition_validation_report():
             ["Highest score first", "Newest checked first"],
             key="validation_report_sort",
         )
+
+    filter_signature = (selected_level, page_size, sort_order)
+    if st.session_state.get("validation_report_filter_signature") != filter_signature:
+        st.session_state.validation_report_page = 1
+        st.session_state.validation_report_filter_signature = filter_signature
 
     where_parts = ["nvr.suspicion_score > 0"]
     query_params = []
@@ -1988,29 +1991,55 @@ def section_nutrition_validation_report():
         if sort_order == "Newest checked first"
         else "nvr.suspicion_score DESC, nvr.product_id"
     )
+    where_clause = " AND ".join(where_parts)
+    report_select = f"""
+        SELECT nvr.product_id, nvr.sku, nvr.product,
+               nvr.suspicion_level, nvr.suspicion_score,
+               nvr.reasons, nvr.checked_at, p.rimi_url
+        FROM nutrition_validation_report nvr
+        LEFT JOIN products p ON p.product_id = nvr.product_id
+        WHERE {where_clause}
+        ORDER BY {order_by}
+    """
 
     try:
         with db.connection.cursor() as cursor:
             cursor.execute(
-                f"""
-                SELECT nvr.product_id, nvr.sku, nvr.product,
-                       nvr.suspicion_level, nvr.suspicion_score,
-                       nvr.reasons, nvr.checked_at, p.rimi_url
-                FROM nutrition_validation_report nvr
-                LEFT JOIN products p ON p.product_id = nvr.product_id
-                WHERE {" AND ".join(where_parts)}
-                ORDER BY {order_by}
-                LIMIT %s
-                """,
-                (*query_params, report_limit),
+                f"SELECT COUNT(*) FROM ({report_select}) report_rows",
+                tuple(query_params),
             )
-            report_rows = [dict(row) for row in cursor.fetchall()]
+            total_suspicious = cursor.fetchone()["count"]
     except Exception as e:
         st.error(f"Could not load suspicious products: {e}")
         return
 
-    if not report_rows:
+    if not total_suspicious:
         st.success("No suspicious products match the selected filter.")
+        return
+
+    total_pages = (total_suspicious + page_size - 1) // page_size
+    with filter_columns[3]:
+        page_number = st.number_input(
+            f"Page (of {total_pages})",
+            min_value=1,
+            max_value=total_pages,
+            value=1,
+            step=1,
+            key="validation_report_page",
+        )
+
+    offset = (page_number - 1) * page_size
+    try:
+        with db.connection.cursor() as cursor:
+            cursor.execute(
+                f"{report_select} LIMIT %s OFFSET %s",
+                (*query_params, page_size, offset),
+            )
+            report_rows = [dict(row) for row in cursor.fetchall()]
+            cursor.execute(report_select, tuple(query_params))
+            all_report_rows = [dict(row) for row in cursor.fetchall()]
+    except Exception as e:
+        st.error(f"Could not load suspicious products: {e}")
         return
 
     def _level_label(level):
@@ -2020,21 +2049,29 @@ def section_nutrition_validation_report():
             "low": "🟡 Low",
         }.get(level, level.title())
 
-    display_rows = []
-    for row in report_rows:
-        reasons = row.get("reasons") or []
-        display_rows.append({
-            "Product": row["product"],
-            "SKU": row["sku"],
-            "Severity": _level_label(row["suspicion_level"]),
-            "Score": float(row["suspicion_score"]),
-            "Findings": len(reasons),
-            "Checked": row["checked_at"].strftime("%Y-%m-%d %H:%M")
-            if row.get("checked_at") else "—",
-            "Open": row.get("rimi_url") or "",
-        })
+    def _display_rows(rows):
+        return [
+            {
+                "Product": row["product"],
+                "SKU": row["sku"],
+                "Severity": _level_label(row["suspicion_level"]),
+                "Score": float(row["suspicion_score"]),
+                "Findings": len(row.get("reasons") or []),
+                "Checked": row["checked_at"].strftime("%Y-%m-%d %H:%M")
+                if row.get("checked_at") else "—",
+                "Open": row.get("rimi_url") or "",
+            }
+            for row in rows
+        ]
 
-    display_df = pd.DataFrame(display_rows)
+    first_result = offset + 1
+    last_result = min(offset + len(report_rows), total_suspicious)
+    st.caption(
+        f"Showing suspicious products {first_result}–{last_result} "
+        f"of {total_suspicious} matching results."
+    )
+
+    display_df = pd.DataFrame(_display_rows(report_rows))
     st.dataframe(
         display_df,
         use_container_width=True,
@@ -2049,9 +2086,10 @@ def section_nutrition_validation_report():
         },
     )
 
+    all_display_df = pd.DataFrame(_display_rows(all_report_rows))
     st.download_button(
-        "⬇️ Download visible report (CSV)",
-        data=display_df.to_csv(index=False).encode("utf-8"),
+        "⬇️ Download all matching results (CSV)",
+        data=all_display_df.to_csv(index=False).encode("utf-8"),
         file_name="nutrition-validation-report.csv",
         mime="text/csv",
     )
