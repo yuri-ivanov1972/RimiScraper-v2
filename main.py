@@ -1884,6 +1884,207 @@ def section_change_report():
         st.code(traceback.format_exc())
 
 
+def section_nutrition_validation_report():
+    """Section: Rule-based ingredient/nutrition consistency report."""
+    import json
+    import pandas as pd
+
+    st.header("🚩 Nutrition Consistency Checks")
+    st.caption(
+        "Products are ranked by evidence that their saved nutrition values "
+        "conflict with their parsed ingredients. Source product and nutrition "
+        "records are read-only here."
+    )
+
+    db = ProductViewDatabase()
+    db._ensure_connection()
+
+    try:
+        with db.connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM nutrition_validation_summary")
+            summary = cursor.fetchone()
+
+            cursor.execute("""
+                SELECT rule, product_count, product_percentage
+                FROM nutrition_validation_rule_summary
+                ORDER BY product_count DESC, rule
+            """)
+            rule_summary = cursor.fetchall()
+    except Exception as e:
+        st.warning(
+            "The nutrition validation report is not available yet. "
+            "Apply migration 004 and run the development backfill first."
+        )
+        st.code(str(e))
+        return
+
+    summary = summary or {
+        "products_checked": 0,
+        "none_count": 0,
+        "low_count": 0,
+        "medium_count": 0,
+        "high_count": 0,
+    }
+
+    metric_columns = st.columns(5)
+    with metric_columns[0]:
+        st.metric("Checked", summary["products_checked"])
+    with metric_columns[1]:
+        st.metric("🔴 High", summary["high_count"])
+    with metric_columns[2]:
+        st.metric("🟠 Medium", summary["medium_count"])
+    with metric_columns[3]:
+        st.metric("🟡 Low", summary["low_count"])
+    with metric_columns[4]:
+        st.metric("✅ No findings", summary["none_count"])
+
+    if not summary["products_checked"]:
+        st.info("No validation results found. Run the development backfill first.")
+        return
+
+    st.subheader("Most common findings")
+    if rule_summary:
+        rule_df = pd.DataFrame([dict(row) for row in rule_summary])
+        rule_df.columns = ["Rule", "Products", "Share"]
+        rule_df["Share"] = rule_df["Share"].map(
+            lambda value: f"{float(value):.1f}%"
+        )
+        st.dataframe(rule_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No rule findings were recorded.")
+
+    st.subheader("Suspicious products")
+    filter_columns = st.columns([1.2, 1, 1])
+    with filter_columns[0]:
+        selected_level = st.selectbox(
+            "Severity",
+            ["All suspicious", "High", "Medium", "Low"],
+            key="validation_report_level",
+        )
+    with filter_columns[1]:
+        report_limit = st.number_input(
+            "Rows to show",
+            min_value=10,
+            max_value=200,
+            value=50,
+            step=10,
+            key="validation_report_limit",
+        )
+    with filter_columns[2]:
+        sort_order = st.selectbox(
+            "Sort",
+            ["Highest score first", "Newest checked first"],
+            key="validation_report_sort",
+        )
+
+    where_parts = ["nvr.suspicion_score > 0"]
+    query_params = []
+    if selected_level != "All suspicious":
+        where_parts.append("nvr.suspicion_level = %s")
+        query_params.append(selected_level.casefold())
+
+    order_by = (
+        "nvr.checked_at DESC, nvr.suspicion_score DESC, nvr.product_id"
+        if sort_order == "Newest checked first"
+        else "nvr.suspicion_score DESC, nvr.product_id"
+    )
+
+    try:
+        with db.connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                SELECT nvr.product_id, nvr.sku, nvr.product,
+                       nvr.suspicion_level, nvr.suspicion_score,
+                       nvr.reasons, nvr.checked_at, p.rimi_url
+                FROM nutrition_validation_report nvr
+                LEFT JOIN products p ON p.product_id = nvr.product_id
+                WHERE {" AND ".join(where_parts)}
+                ORDER BY {order_by}
+                LIMIT %s
+                """,
+                (*query_params, report_limit),
+            )
+            report_rows = [dict(row) for row in cursor.fetchall()]
+    except Exception as e:
+        st.error(f"Could not load suspicious products: {e}")
+        return
+
+    if not report_rows:
+        st.success("No suspicious products match the selected filter.")
+        return
+
+    def _level_label(level):
+        return {
+            "high": "🔴 High",
+            "medium": "🟠 Medium",
+            "low": "🟡 Low",
+        }.get(level, level.title())
+
+    display_rows = []
+    for row in report_rows:
+        reasons = row.get("reasons") or []
+        display_rows.append({
+            "Product": row["product"],
+            "SKU": row["sku"],
+            "Severity": _level_label(row["suspicion_level"]),
+            "Score": float(row["suspicion_score"]),
+            "Findings": len(reasons),
+            "Checked": row["checked_at"].strftime("%Y-%m-%d %H:%M")
+            if row.get("checked_at") else "—",
+            "Open": row.get("rimi_url") or "",
+        })
+
+    display_df = pd.DataFrame(display_rows)
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Open": st.column_config.LinkColumn(
+                "Rimi",
+                display_text="Open",
+                help="Open this product on Rimi",
+            ),
+            "Score": st.column_config.NumberColumn(format="%.0f"),
+        },
+    )
+
+    st.download_button(
+        "⬇️ Download visible report (CSV)",
+        data=display_df.to_csv(index=False).encode("utf-8"),
+        file_name="nutrition-validation-report.csv",
+        mime="text/csv",
+    )
+
+    st.subheader("Details")
+    for row in report_rows:
+        reasons = row.get("reasons") or []
+        title = (
+            f"{_level_label(row['suspicion_level'])} · "
+            f"{row['product']} · score {float(row['suspicion_score']):.0f}"
+        )
+        with st.expander(title):
+            st.write(f"**SKU:** {row['sku'] or '—'}")
+            st.write(
+                f"**Checked:** {row['checked_at'].strftime('%Y-%m-%d %H:%M')}"
+                if row.get("checked_at")
+                else "**Checked:** —"
+            )
+            if row.get("rimi_url"):
+                st.link_button("Open product on Rimi", row["rimi_url"])
+            for reason in reasons:
+                if isinstance(reason, str):
+                    st.markdown(f"- {reason}")
+                    continue
+                rule = reason.get("rule", "Finding")
+                message = reason.get("message") or reason.get("description") or ""
+                evidence = reason.get("evidence")
+                detail = f" — {message}" if message else ""
+                if evidence:
+                    detail += f" `{json.dumps(evidence, ensure_ascii=False)}`"
+                st.markdown(f"- **{rule}**{detail}")
+
+
 def section_backfill_quantities():
     """Section: Backfill quantity_value/quantity_unit for NxM multiplier products."""
     st.header("📦 Backfill Quantities")
@@ -2758,7 +2959,7 @@ def main():
             f"The worker may be broken. Go to **🔔 Health** for details."
         )
 
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+    col1, col2, col3, col4, col5, col6, col7, col8 = st.columns(8)
     
     with col1:
         if st.button("📦 Categories", use_container_width=True, 
@@ -2803,6 +3004,12 @@ def main():
             st.session_state.drought_status = _get_drought_status()  # Refresh on click
             st.session_state.view_mode = 'worker_health'
             st.rerun()
+
+    with col8:
+        if st.button("🚩 Checks", use_container_width=True,
+                     type="primary" if st.session_state.view_mode == 'nutrition_validation_report' else "secondary"):
+            st.session_state.view_mode = 'nutrition_validation_report'
+            st.rerun()
     
     st.divider()
     
@@ -2818,6 +3025,8 @@ def main():
         section_ingredient_import()
     elif st.session_state.view_mode == 'worker_health':
         section_worker_health()
+    elif st.session_state.view_mode == 'nutrition_validation_report':
+        section_nutrition_validation_report()
     else:
         section_nutrition_enrichment()
 
