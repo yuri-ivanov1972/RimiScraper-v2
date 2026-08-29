@@ -2,8 +2,13 @@
 """Focused tests for rule-based ingredient/nutrition validation."""
 
 import unittest
+from unittest.mock import patch
 
-from nutrition_validation_backfill import validate_existing_products
+from nutrition_validation_backfill import (
+    get_database_url,
+    main as backfill_main,
+    validate_existing_products,
+)
 from nutrition_validator import (
     NutritionValidator,
     enrich_mapped_ingredients,
@@ -372,6 +377,68 @@ class FakeConnection:
 
 
 class BackfillTests(unittest.TestCase):
+    def test_production_backfill_requires_explicit_confirmation(self):
+        with patch.dict(
+            "os.environ",
+            {"PROD_DATABASE_URL": "prod-db"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "confirm-production"):
+                get_database_url(production=True)
+
+    def test_production_backfill_rejects_same_database_url(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "DATABASE_URL": "same-db",
+                "PROD_DATABASE_URL": "same-db",
+            },
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "must be different"):
+                get_database_url(
+                    production=True,
+                    confirm_production=True,
+                )
+
+    def test_production_backfill_requires_production_url(self):
+        with patch.dict(
+            "os.environ",
+            {"DATABASE_URL": "dev-db"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "PROD_DATABASE_URL"):
+                get_database_url(
+                    production=True,
+                    confirm_production=True,
+                )
+
+    def test_development_backfill_does_not_accept_production_confirmation(self):
+        with patch.dict(
+            "os.environ",
+            {"DATABASE_URL": "dev-db"},
+            clear=True,
+        ):
+            with self.assertRaisesRegex(ValueError, "requires --production"):
+                get_database_url(
+                    production=False,
+                    confirm_production=True,
+                )
+
+    def test_cli_guard_fails_before_connecting(self):
+        with patch.dict(
+            "os.environ",
+            {"PROD_DATABASE_URL": "prod-db"},
+            clear=True,
+        ):
+            with patch(
+                "nutrition_validation_backfill.psycopg2.connect"
+            ) as connect:
+                exit_code = backfill_main(["--production"])
+
+        self.assertEqual(exit_code, 2)
+        connect.assert_not_called()
+
     def test_backfill_upserts_one_current_result_on_repeated_runs(self):
         connection = FakeConnection()
         first = validate_existing_products(connection, batch_size=1)
@@ -386,6 +453,67 @@ class BackfillTests(unittest.TestCase):
             "medium",
         )
         self.assertEqual(connection.commits, 2)
+
+    def test_backfill_resumes_after_last_committed_product_id(self):
+        connection = FakeConnection()
+        template = connection.products[0]
+        connection.products = [
+            {**template, "product_id": product_id, "sku": f"SKU-{product_id}"}
+            for product_id in range(1, 4)
+        ]
+        connection.ingredients = [
+            {
+                "product_sku": f"SKU-{product_id}",
+                "ingredient": "cukurs",
+                "clean_name": None,
+            }
+            for product_id in range(1, 4)
+        ]
+
+        summary = validate_existing_products(
+            connection,
+            start_id=1,
+            batch_size=1,
+        )
+
+        self.assertEqual(summary["attempted"], 2)
+        self.assertEqual(summary["last_product_id"], 3)
+        self.assertEqual(set(connection.validation_rows), {2, 3})
+
+    def test_backfill_isolates_one_product_failure_and_continues(self):
+        connection = FakeConnection()
+        template = connection.products[0]
+        connection.products = [
+            {**template, "product_id": product_id, "sku": f"SKU-{product_id}"}
+            for product_id in range(1, 4)
+        ]
+
+        class FlakyValidator:
+            def validate(self, _ingredients, product):
+                if product["product_id"] == 2:
+                    raise RuntimeError("test failure")
+                return {
+                    "suspicion_level": "none",
+                    "suspicion_score": 0,
+                    "reasons": [],
+                }
+
+        summary = validate_existing_products(
+            connection,
+            batch_size=3,
+            validator=FlakyValidator(),
+        )
+
+        self.assertEqual(summary["attempted"], 3)
+        self.assertEqual(
+            summary["failures"],
+            [{
+                "product_id": 2,
+                "sku": "SKU-2",
+                "error": "test failure",
+            }],
+        )
+        self.assertEqual(set(connection.validation_rows), {1, 3})
 
 
 if __name__ == "__main__":

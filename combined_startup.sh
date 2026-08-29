@@ -13,12 +13,6 @@ echo ""
 # Create logs directory
 mkdir -p logs
 
-# Apply the approved additive schema migration before either service starts.
-# This intentionally creates schema objects only; validation rows are populated
-# by the separately reviewed backfill process.
-echo "Applying nutrition validation schema migration..."
-python apply_nutrition_validation_schema.py --production
-
 # Crash log file
 CRASH_LOG="logs/crash_history.log"
 

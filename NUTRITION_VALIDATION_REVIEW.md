@@ -5,18 +5,44 @@ Review date: 2026-08-29
 ## Decision
 
 The development schema in `migrations/004_add_nutrition_validation.sql` and
-`schema.sql` is approved for the Replit publish-time production migration run
-by `combined_startup.sh`.
+`schema.sql` is approved for Replit’s publish-time production schema migration.
 
 This approval covers the `nutrition_validation` table, indexes, and reporting
 views. It does not enable a production backfill or automatic validation after
 scraping.
 
-At deployment startup,
-`python apply_nutrition_validation_schema.py --production` applies migration
-004 to `PROD_DATABASE_URL` and verifies every approved schema object before
-Streamlit or the worker starts. Publishing fails explicitly if migration or
-verification fails.
+The application startup does not mutate production schema. Publishing applies
+the schema diff, and the separately guarded backfill populates validation rows
+after the schema is available.
+
+Replit documents this publish-time schema synchronization at:
+https://docs.replit.com/features/data-and-storage/development-and-production
+
+## Production rollout
+
+The guarded production backfill completed on 2026-08-29. The first process
+committed 2,500 products before the execution tool timed out. It was resumed
+from product ID 2,500 and completed the remaining 8,125 products with zero
+product-level failures.
+
+Read-only production verification after completion:
+
+| Check | Result |
+| --- | ---: |
+| Products | 10,625 |
+| Validation rows | 10,625 |
+| Missing validation rows | 0 |
+| Duplicate product IDs | 0 |
+| Suspicious results | 898 |
+| None | 9,727 |
+| Low | 92 |
+| Medium | 600 |
+| High | 206 |
+
+The production deployment was active and had a successful VM build when these
+counts were verified. Its password visibility prevents unauthenticated visual
+inspection, while the report's production backing views and row coverage were
+verified directly.
 
 ## Backfill coverage
 

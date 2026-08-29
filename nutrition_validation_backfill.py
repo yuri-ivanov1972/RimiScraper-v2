@@ -6,9 +6,10 @@ Usage:
     python nutrition_validation_backfill.py
     python nutrition_validation_backfill.py --limit 100 --batch-size 25
     python nutrition_validation_backfill.py --start-id 1000
+    python nutrition_validation_backfill.py --production --confirm-production
 
-This command intentionally uses DATABASE_URL only.  Production rollout is a
-separate reviewed step.
+Production requires both --production and --confirm-production.  The two
+database URLs must be different when both are configured.
 """
 
 from __future__ import annotations
@@ -77,6 +78,34 @@ UPSERT_QUERY = """
         reasons = EXCLUDED.reasons,
         checked_at = EXCLUDED.checked_at
 """
+
+
+def get_database_url(
+    *,
+    production: bool,
+    confirm_production: bool = False,
+) -> str:
+    """Resolve an explicitly selected database target without ambiguity."""
+    if confirm_production and not production:
+        raise ValueError("--confirm-production requires --production.")
+    if production and not confirm_production:
+        raise ValueError(
+            "Production backfill requires --production "
+            "and --confirm-production."
+        )
+
+    variable = "PROD_DATABASE_URL" if production else "DATABASE_URL"
+    database_url = os.environ.get(variable)
+    if not database_url:
+        raise ValueError(f"{variable} is required for this backfill.")
+
+    if production:
+        development_url = os.environ.get("DATABASE_URL")
+        if development_url and database_url == development_url:
+            raise ValueError(
+                "PROD_DATABASE_URL and DATABASE_URL must be different."
+            )
+    return database_url
 
 
 def _load_ingredients(cursor, skus: list[str]) -> dict[str, list[dict[str, Any]]]:
@@ -203,7 +232,17 @@ def fetch_suspicious_report(connection, limit: int = 20) -> list[dict[str, Any]]
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate existing products in the development database."
+        description="Validate existing products in a selected database."
+    )
+    parser.add_argument(
+        "--production",
+        action="store_true",
+        help="Use PROD_DATABASE_URL instead of DATABASE_URL.",
+    )
+    parser.add_argument(
+        "--confirm-production",
+        action="store_true",
+        help="Required together with --production before writing production results.",
     )
     parser.add_argument(
         "--limit",
@@ -234,11 +273,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    database_url = os.environ.get("DATABASE_URL")
-    if not database_url:
-        print("DATABASE_URL is required for the development backfill.", file=sys.stderr)
+    try:
+        database_url = get_database_url(
+            production=args.production,
+            confirm_production=args.confirm_production,
+        )
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
         return 2
 
+    target = "production" if args.production else "development"
+    print(f"Running nutrition validation backfill for {target}.")
     connection = psycopg2.connect(database_url)
     try:
         summary = validate_existing_products(
