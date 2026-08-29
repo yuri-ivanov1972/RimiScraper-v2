@@ -59,6 +59,21 @@ export PROD_DATABASE_URL='postgresql://user:password@host:port/database'
 
 ## Running the Migration
 
+### Replit publish-time schema migration
+
+The Reserved VM publish command runs `combined_startup.sh`. Before Streamlit or
+the worker starts, it runs:
+
+```bash
+python apply_nutrition_validation_schema.py --production
+```
+
+This applies `migrations/004_add_nutrition_validation.sql` to
+`PROD_DATABASE_URL` and verifies the `nutrition_validation` table, its two
+reporting indexes, and all three reporting views. The migration is additive and
+idempotent. It does not copy development findings or run the validation
+backfill. A migration or verification failure stops deployment startup.
+
 ### Step 1: Verify Development Database
 
 First, check that your development database has data to migrate:
