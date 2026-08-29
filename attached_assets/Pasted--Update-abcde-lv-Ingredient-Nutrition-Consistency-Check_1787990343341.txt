@@ -1,0 +1,806 @@
+# Update abcde.lv: Ingredient ↔ Nutrition Consistency Checker
+
+Please update the existing `abcde.lv` scraper/project to add an automated consistency check between each product's **ingredient list** and its **nutrition data**.
+
+## Goal
+
+Some Rimi product pages contain incorrect nutrition information, particularly for:
+
+* saturated fat
+* sugars
+* salt
+* total fat
+* carbohydrates
+* protein
+* energy
+
+We want to detect products where the ingredient list provides evidence that the nutrition data is probably incorrect.
+
+**Important:** Do not modify, replace, or delete the original scraped nutrition values. The validation system must be an additional layer that records suspicions separately.
+
+---
+
+## 1. Add a new database table
+
+Create a table called:
+
+`nutrition_validation`
+
+Suggested fields:
+
+```text
+id
+product_id
+suspicion_level
+suspicion_score
+reasons
+checked_at
+```
+
+Where:
+
+* `id` = primary key
+* `product_id` = foreign key/reference to the existing product
+* `suspicion_level` = `none`, `low`, `medium`, `high`
+* `suspicion_score` = numeric score used to rank suspicious products
+* `reasons` = JSON array containing individual validation findings
+* `checked_at` = timestamp of the validation
+
+If the project/database already has conventions for timestamps, IDs, foreign keys, or JSON fields, follow those conventions.
+
+The validation should be reproducible: running it again should update/recalculate the validation result rather than creating unlimited duplicate records for the same product.
+
+---
+
+## 2. Store structured reasons
+
+Do not store only a human-readable text string.
+
+Each reason should contain structured information, for example:
+
+```json
+{
+  "rule": "milk_present_but_saturated_fat_zero",
+  "severity": "high",
+  "ingredient_evidence": ["milk"],
+  "nutrition_field": "saturated_fat",
+  "nutrition_value": 0,
+  "message": "Milk is present in the ingredients but saturated fat is reported as zero."
+}
+```
+
+The `reasons` field should contain an array of these objects.
+
+This will allow the frontend to display explanations and will allow us to analyse which errors occur most frequently.
+
+---
+
+# 3. Implement validation rules
+
+Create a dedicated validation module/service rather than putting all the logic directly inside the scraper.
+
+The validator should normalize the ingredient text first:
+
+* lowercase
+* handle Latvian characters correctly
+* normalize whitespace
+* make matching reasonably robust against minor variations
+* avoid simple substring matching where it can produce obvious false positives
+
+Create ingredient categories/keyword groups.
+
+### A. Dairy → saturated fat
+
+Look for ingredients such as:
+
+* milk
+* whole milk
+* cream
+* butter
+* milk fat
+* milk powder
+* whole milk powder
+* cheese
+* whey
+* whey powder
+* condensed milk
+
+If these ingredients are present and:
+
+```text
+saturated_fat == 0
+```
+
+create a high-confidence suspicion.
+
+Rule:
+
+`milk_present_but_saturated_fat_zero`
+
+---
+
+### B. Fat/oil → total fat
+
+Look for:
+
+* vegetable oil
+* sunflower oil
+* rapeseed oil
+* canola oil
+* olive oil
+* coconut oil
+* palm oil
+* cocoa butter
+* butter
+* milk fat
+
+If these are present and:
+
+```text
+fat == 0
+```
+
+flag:
+
+`fat_ingredient_present_but_fat_zero`
+
+---
+
+### C. Fat-rich ingredients → saturated fat
+
+Look for ingredients that normally contain significant saturated fat:
+
+* coconut oil
+* palm oil
+* palm kernel oil
+* butter
+* milk fat
+* cream
+* cocoa butter
+
+If present and:
+
+```text
+saturated_fat == 0
+```
+
+flag:
+
+`high_saturated_fat_ingredient_but_saturated_fat_zero`
+
+This should be considered strong evidence, but not automatically treated as an absolute contradiction because ingredient quantities can be very small.
+
+---
+
+### D. Sugar → sugars
+
+Look for:
+
+* sugar
+* sucrose
+* glucose
+* fructose
+* glucose syrup
+* glucose-fructose syrup
+* fructose syrup
+* invert syrup
+* corn syrup
+* honey
+* molasses
+* caramel syrup
+
+If present and:
+
+```text
+sugars == 0
+```
+
+flag:
+
+`sugar_ingredient_present_but_sugars_zero`
+
+---
+
+### E. Carbohydrate ingredients → carbohydrates
+
+Look for:
+
+* wheat flour
+* flour
+* starch
+* potato starch
+* corn starch
+* rice
+* rice flour
+* oats
+* oat flour
+* wheat
+* barley
+* rye
+* cereals
+* maltodextrin
+
+If present and:
+
+```text
+carbohydrates == 0
+```
+
+flag:
+
+`carbohydrate_ingredient_present_but_carbohydrates_zero`
+
+---
+
+### F. Fruit → sugars
+
+Look for:
+
+* fruit
+* berries
+* fruit puree
+* fruit juice
+* apple
+* banana
+* strawberry
+* raspberry
+* blueberry
+* grape
+* dates
+* raisins
+* dried fruit
+
+If significant fruit ingredients are present and:
+
+```text
+sugars == 0
+```
+
+flag:
+
+`fruit_present_but_sugars_zero`
+
+This should have lower confidence than a direct sugar ingredient because the quantity may be small.
+
+---
+
+### G. Salt → salt
+
+Look for:
+
+* salt
+* sodium chloride
+* sea salt
+* rock salt
+
+If present and:
+
+```text
+salt == 0
+```
+
+flag:
+
+`salt_present_but_salt_zero`
+
+---
+
+### H. Salty ingredients → salt
+
+Look for ingredients that normally contribute significant salt/sodium:
+
+* soy sauce
+* brine
+* salted cheese
+* cured meat
+* smoked meat
+* salted fish
+* pickled products
+
+If present and salt is zero or implausibly low, flag:
+
+`salty_ingredient_but_low_salt`
+
+This should normally be medium rather than high severity.
+
+---
+
+### I. Protein ingredients → protein
+
+Look for:
+
+* meat
+* beef
+* pork
+* chicken
+* turkey
+* fish
+* tuna
+* salmon
+* egg
+* egg white
+* cheese
+* whey protein
+* milk protein
+* soy protein
+* pea protein
+* protein isolate
+* protein concentrate
+* legumes
+
+If these are present and:
+
+```text
+protein == 0
+```
+
+flag:
+
+`protein_ingredient_present_but_protein_zero`
+
+---
+
+### J. Nuts/seeds → fat
+
+Look for:
+
+* almonds
+* peanuts
+* hazelnuts
+* walnuts
+* cashews
+* pistachios
+* sunflower seeds
+* pumpkin seeds
+* sesame
+* chia
+* flax
+
+If present and:
+
+```text
+fat == 0
+```
+
+flag:
+
+`nuts_or_seeds_present_but_fat_zero`
+
+---
+
+### K. Cocoa/chocolate → fat/sugars
+
+Look for:
+
+* cocoa
+* cocoa powder
+* cocoa mass
+* chocolate
+* dark chocolate
+* milk chocolate
+* cocoa butter
+
+If these are present, check for implausible zero values in:
+
+* fat
+* saturated fat
+* sugars
+
+Create separate reasons for each detected contradiction.
+
+---
+
+# 4. Mathematical consistency checks
+
+Add checks that don't depend on ingredient keywords.
+
+### A. Saturated fat cannot exceed total fat
+
+If:
+
+```text
+saturated_fat > fat
+```
+
+flag:
+
+`saturated_fat_exceeds_total_fat`
+
+Severity: `high`
+
+---
+
+### B. Sugars cannot exceed carbohydrates
+
+If:
+
+```text
+sugars > carbohydrates
+```
+
+flag:
+
+`sugars_exceed_carbohydrates`
+
+Severity: `high`
+
+---
+
+### C. Energy consistency
+
+Where nutrition values are available, calculate approximate energy from macronutrients:
+
+```text
+estimated_kcal =
+    protein * 4
+    + carbohydrates * 4
+    + fat * 9
+```
+
+If fibre/alcohol information is available, account for them appropriately.
+
+Compare the calculated value with the declared energy.
+
+Do not require exact equality because EU nutrition labelling uses rounding and energy conversion factors.
+
+Instead, flag only substantial discrepancies.
+
+Suggested initial threshold:
+
+```text
+absolute difference > 20%
+AND
+absolute difference > 50 kcal
+```
+
+Reason:
+
+`energy_inconsistent_with_macronutrients`
+
+Severity: `medium`
+
+Make the threshold configurable.
+
+---
+
+### D. Salt/sodium consistency
+
+If both salt and sodium are available, use the approximate relationship:
+
+```text
+salt ≈ sodium × 2.5
+```
+
+Do not treat small differences as errors because of rounding.
+
+Flag only large discrepancies.
+
+Reason:
+
+`salt_sodium_inconsistent`
+
+Severity: `medium`
+
+Make the tolerance configurable.
+
+---
+
+# 5. Zero-value cluster detection
+
+Add an additional heuristic.
+
+If the ingredient list contains several nutritionally meaningful ingredients but several corresponding nutrition fields are simultaneously zero, increase the suspicion score.
+
+Example:
+
+```text
+ingredients:
+milk, cream, sugar
+
+nutrition:
+fat = 0
+saturated_fat = 0
+sugars = 0
+```
+
+This is much stronger evidence of a bad nutrition record than one isolated zero.
+
+Reason:
+
+`multiple_nutrition_values_inconsistent_with_ingredients`
+
+---
+
+# 6. Suspicion scoring
+
+Implement a simple scoring system.
+
+Suggested initial weights:
+
+### High-confidence rules
+
+* impossible mathematical relationship: `+10`
+* fat ingredient + fat = 0: `+8`
+* sugar ingredient + sugars = 0: `+8`
+* salt ingredient + salt = 0: `+8`
+* dairy ingredient + saturated fat = 0: `+8`
+* protein ingredient + protein = 0: `+8`
+
+### Medium-confidence rules
+
+* ingredient strongly associated with nutrient + unusually low value: `+5`
+* energy/macronutrient inconsistency: `+5`
+* salt/sodium inconsistency: `+5`
+
+### Low-confidence rules
+
+* weak ingredient/nutrient relationship: `+2`
+* fruit/fibre/etc. suspicion where quantity is uncertain: `+2`
+
+Then classify:
+
+```text
+0             = none
+1–4           = low
+5–9           = medium
+10+           = high
+```
+
+Make these thresholds configurable.
+
+Do not let multiple occurrences of the same ingredient unnecessarily multiply the score.
+
+For example, "milk, milk powder, cream" should not automatically count as three completely independent violations of the same underlying issue.
+
+---
+
+# 7. Important false-positive handling
+
+The system must be conservative.
+
+An ingredient appearing in the ingredient list does NOT necessarily mean that a nutrient must be present in a large quantity.
+
+For example:
+
+```text
+"may contain..."
+```
+
+should NOT be treated as a definite ingredient.
+
+Likewise, ingredients appearing in very small quantities may legitimately result in a rounded nutrition value of zero.
+
+Therefore distinguish between:
+
+* definite contradiction
+* strong suspicion
+* weak suspicion
+
+Do not claim that a product is definitely wrong unless the evidence is mathematically impossible.
+
+---
+
+# 8. Ingredient parsing
+
+Create a normalized representation of the ingredient list before validation.
+
+Ideally identify:
+
+```text
+ingredient_name
+category
+position_in_ingredient_list
+percentage_if_available
+```
+
+If percentages are explicitly given in the ingredient list, use them to improve confidence.
+
+For example:
+
+```text
+milk (35%)
+```
+
+should produce a much stronger warning than:
+
+```text
+milk
+```
+
+with no percentage.
+
+If the existing scraper already parses ingredients into structured data, reuse that functionality rather than creating a second parser.
+
+---
+
+# 9. Integration with the existing scraper
+
+After a product is scraped:
+
+1. Save/update the product as currently done.
+2. Run the nutrition validation.
+3. Save/update the corresponding `nutrition_validation` record.
+4. Never modify the original scraped ingredient or nutrition values.
+
+The validation should also be runnable independently against existing products, e.g. as a command/job such as:
+
+```text
+validate-nutrition
+```
+
+This is important because we should be able to validate products that were already scraped without scraping Rimi again.
+
+---
+
+# 10. Admin/debug output
+
+Add a way to inspect suspicious products.
+
+At minimum, provide a query/report showing:
+
+```text
+product
+suspicion_level
+suspicion_score
+reasons
+```
+
+Sort by:
+
+```text
+suspicion_score DESC
+```
+
+The output should make it easy to see examples such as:
+
+```text
+Product: Chocolate ice cream
+
+Level: HIGH
+Score: 16
+
+Reasons:
+- Milk is present but saturated fat = 0
+- Cream is present but saturated fat = 0
+- Sugar is present but sugars = 0
+```
+
+---
+
+# 11. Statistics
+
+Add a simple summary/report with:
+
+* total products checked
+* products with no suspicion
+* low suspicion
+* medium suspicion
+* high suspicion
+* count of each validation rule triggered
+* percentage of products triggering each rule
+
+For example:
+
+```text
+Products checked: 12,453
+
+HIGH:    183
+MEDIUM:  421
+LOW:     967
+NONE:  10,882
+
+Most common rules:
+1. sugar_ingredient_present_but_sugars_zero: 241
+2. milk_present_but_saturated_fat_zero: 173
+3. salt_present_but_salt_zero: 109
+```
+
+---
+
+# 12. Tests
+
+Add automated tests for every validation rule.
+
+At minimum, create test products representing:
+
+### Should be flagged
+
+```text
+Ingredients: milk, cream, sugar
+Fat: 0
+Saturated fat: 0
+Sugars: 0
+```
+
+```text
+Ingredients: sugar, cocoa
+Sugars: 0
+```
+
+```text
+Ingredients: sunflower oil
+Fat: 0
+```
+
+```text
+Ingredients: salt
+Salt: 0
+```
+
+```text
+Ingredients: chicken
+Protein: 0
+```
+
+```text
+Fat: 5
+Saturated fat: 8
+```
+
+```text
+Carbohydrates: 10
+Sugars: 15
+```
+
+### Should NOT automatically be flagged
+
+```text
+Ingredients: skimmed milk
+Fat: 0.1
+Saturated fat: 0.0
+```
+
+```text
+Ingredients: sugar
+Sugars: 0.1
+```
+
+```text
+Ingredients: "may contain milk"
+Saturated fat: 0
+```
+
+Also test Latvian characters and common Latvian ingredient terminology.
+
+---
+
+# 13. Configuration
+
+Put the validation thresholds and keyword dictionaries in a maintainable/configurable location rather than scattering magic numbers throughout the code.
+
+For example:
+
+```text
+NUTRITION_VALIDATION_CONFIG
+```
+
+should contain:
+
+* scoring weights
+* suspicion thresholds
+* energy discrepancy threshold
+* salt/sodium tolerance
+* ingredient keyword groups
+
+This will allow us to tune the algorithm after examining real Rimi data.
+
+---
+
+# 14. Do not over-engineer initially
+
+The first implementation should be a **transparent rule-based system**, not an AI/ML classifier.
+
+Every suspicion must be explainable by one or more explicit rules.
+
+The main objective is to produce a reliable dataset of suspicious nutrition records that can later be reviewed and used to improve the rules.
+
+Before implementing, inspect the existing project structure and database schema and adapt the implementation to the project's existing architecture, naming conventions, ORM, migration system, and testing framework.
+
+After implementation, run the existing tests plus the new nutrition-validation tests and report:
+
+1. files changed
+2. database migration added
+3. validation rules implemented
+4. tests added
+5. test results
+6. any assumptions or limitations
