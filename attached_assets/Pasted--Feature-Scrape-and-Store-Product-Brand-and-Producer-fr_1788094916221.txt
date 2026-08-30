@@ -1,0 +1,917 @@
+# Feature: Scrape and Store Product Brand and Producer from Rimi.lv
+
+I have an existing project that scrapes product information from Rimi.lv.
+
+Add a new feature to scrape, normalize, deduplicate, store, and link **product brand** and **producer/manufacturer** information found on Rimi.lv product pages.
+
+Do not break or change the existing scraping functionality.
+
+Before making changes, inspect the existing project structure, database schema, ORM/database library, migrations, scraper architecture, models, and tests. Use the existing project's conventions rather than introducing a new framework or database technology.
+
+---
+
+## 1. Functional requirements
+
+For each Rimi product page, look for these HTML labels:
+
+```html
+<span>Zīmols</span>
+<span>Ražotājs</span>
+```
+
+The corresponding values should be extracted from the product page.
+
+Example product:
+
+[https://www.rimi.lv/e-veikals/lv/produkti/maize-un-konditoreja/konditoreja/kukas-un-kucinas/kucinas-skudrupuznisi-6x50g/p/275915](https://www.rimi.lv/e-veikals/lv/produkti/maize-un-konditoreja/konditoreja/kukas-un-kucinas/kucinas-skudrupuznisi-6x50g/p/275915)
+
+The page contains:
+
+```text
+Zīmols: Staburadze
+Ražotājs: Orkla Latvija SIA
+```
+
+The scraper should extract:
+
+```text
+brand = Staburadze
+producer = Orkla Latvija SIA
+```
+
+The exact HTML structure around these labels should be inspected carefully. Do not assume that the value is always located in the same exact sibling element without verifying the real page structure.
+
+---
+
+# 2. Database design
+
+Create two new main tables:
+
+```text
+brands
+producers
+```
+
+Because a producer can own/manufacture several brands, also create a relationship table:
+
+```text
+brand_producers
+```
+
+The product itself should have at most:
+
+```text
+0..1 brand
+0..1 producer
+```
+
+A product may have a brand without a producer, or a producer without a brand.
+
+---
+
+## 3. `brands` table
+
+Create a `brands` table following the existing project's database conventions.
+
+At minimum:
+
+```text
+id
+name
+normalized_name
+website_url
+created_at
+updated_at
+```
+
+Where:
+
+* `name` = canonical/display name, preserving a sensible human-readable version from Rimi
+* `normalized_name` = normalized value used for matching/deduplication
+* `website_url` = nullable; this will be filled manually later
+* timestamps should follow existing project conventions
+
+Add a unique constraint/index on:
+
+```text
+normalized_name
+```
+
+so duplicate brands cannot accidentally be created.
+
+---
+
+# 4. `producers` table
+
+Create:
+
+```text
+producers
+```
+
+with:
+
+```text
+id
+name
+normalized_name
+website_url
+created_at
+updated_at
+```
+
+Where:
+
+* `name` = canonical/display name
+* `normalized_name` = normalized value used for matching/deduplication
+* `website_url` = nullable and will be manually added later
+
+Add a unique constraint/index on:
+
+```text
+normalized_name
+```
+
+---
+
+# 5. `brand_producers` relationship table
+
+Create a many-to-many relationship:
+
+```text
+brand_producers
+```
+
+Suggested fields:
+
+```text
+id
+brand_id
+producer_id
+created_at
+```
+
+Add a unique constraint on:
+
+```text
+(brand_id, producer_id)
+```
+
+This is important because the same brand/producer relationship must not be inserted repeatedly every time a product is scraped.
+
+Example:
+
+```text
+Staburadze
+    |
+    +--- Orkla Latvija SIA
+```
+
+And later it should be possible to have:
+
+```text
+Orkla Latvija SIA
+    |
+    +--- Staburadze
+    +--- Laima
+    +--- Selga
+```
+
+---
+
+# 6. Add relationships to products
+
+Modify the existing products table/model to support:
+
+```text
+brand_id
+producer_id
+```
+
+Both must be nullable.
+
+Therefore:
+
+```text
+Product
+  ├── brand_id → Brand (nullable)
+  └── producer_id → Producer (nullable)
+```
+
+A product must never be forced to have either one.
+
+Examples:
+
+### Product with both
+
+```text
+Product A
+brand: Staburadze
+producer: Orkla Latvija SIA
+```
+
+### Product with only brand
+
+```text
+Product B
+brand: Coca-Cola
+producer: NULL
+```
+
+### Product with only producer
+
+```text
+Product C
+brand: NULL
+producer: Some Producer SIA
+```
+
+### Product with neither
+
+```text
+Product D
+brand: NULL
+producer: NULL
+```
+
+Do not create placeholder records such as `"Unknown"` or `"N/A"`.
+
+---
+
+# 7. Normalization and deduplication
+
+This is an important part of the feature.
+
+The scraper must not create separate records for differences such as:
+
+```text
+Staburadze
+STABURADZE
+staburadze
+ Staburadze
+Staburadze 
+```
+
+These must resolve to the same brand.
+
+Likewise:
+
+```text
+Orkla Latvija SIA
+ORKLA LATVIJA SIA
+Orkla Latvija SIA 
+```
+
+must resolve to the same producer.
+
+Create a reusable normalization function/service.
+
+At minimum normalization should:
+
+1. Trim leading/trailing whitespace.
+2. Collapse repeated whitespace.
+3. Normalize Unicode consistently.
+4. Perform case-insensitive matching.
+5. Preserve Latvian characters correctly.
+6. Use the normalized value only for matching/deduplication.
+7. Preserve a human-readable canonical `name` separately.
+
+For example:
+
+```text
+original:
+"  STABURADZE  "
+
+normalized:
+"staburadze"
+```
+
+Do not remove Latvian diacritics merely to perform normalization. For example, `Ražotājs` is not equivalent to arbitrarily stripping `ž`.
+
+Use Unicode-aware normalization.
+
+---
+
+# 8. Handling canonical names
+
+When a new brand/producer is encountered:
+
+1. Calculate `normalized_name`.
+2. Search for an existing record using `normalized_name`.
+3. If found, reuse that record.
+4. If not found, create a new record.
+5. Never create a duplicate solely because capitalization or whitespace differs.
+
+For an existing record, do not blindly overwrite its canonical `name` on every scrape.
+
+This is important because the canonical name may later be manually corrected.
+
+The same applies to:
+
+```text
+website_url
+```
+
+The scraper must NEVER overwrite a manually entered website URL.
+
+---
+
+# 9. Product scraping workflow
+
+Update the existing product scraping process.
+
+After loading the Rimi product page:
+
+1. Extract existing product information exactly as before.
+2. Search for the `Zīmols` label.
+3. Extract the corresponding brand value.
+4. Search for the `Ražotājs` label.
+5. Extract the corresponding producer value.
+6. Normalize the extracted values.
+7. Find or create the corresponding brand record.
+8. Find or create the corresponding producer record.
+9. Set the product's `brand_id` and/or `producer_id`.
+10. If both brand and producer are present, create the `brand_producers` relationship.
+11. Save the product.
+
+Do not fail the entire product scrape if one or both fields are absent.
+
+---
+
+# 10. Relationship creation
+
+If a product contains:
+
+```text
+Brand: Staburadze
+Producer: Orkla Latvija SIA
+```
+
+ensure that:
+
+```text
+products.brand_id → Staburadze
+products.producer_id → Orkla Latvija SIA
+```
+
+and:
+
+```text
+brand_producers:
+Staburadze ↔ Orkla Latvija SIA
+```
+
+is present.
+
+If another product contains:
+
+```text
+Brand: Staburadze
+Producer: Orkla Latvija SIA
+```
+
+do not create another relationship row.
+
+If a product has only:
+
+```text
+Brand: Staburadze
+```
+
+store the brand but do not create a brand-producer relationship.
+
+If it has only:
+
+```text
+Producer: Orkla Latvija SIA
+```
+
+store the producer but do not create a brand-producer relationship.
+
+---
+
+# 11. What happens if product information changes?
+
+The scraper must update the product's current brand/producer relationship.
+
+For example, if an existing product previously had:
+
+```text
+brand = Staburadze
+producer = Orkla Latvija SIA
+```
+
+and a later Rimi scrape says:
+
+```text
+brand = Staburadze
+producer = Another Producer SIA
+```
+
+update the product's `producer_id`.
+
+Do NOT delete the old producer or brand from the master tables.
+
+Do NOT delete the old `brand_producers` relationship automatically unless it is certain that the relationship is no longer valid.
+
+The relationship table represents known associations between brands and producers, not just the current state of one product.
+
+---
+
+# 12. Backfill existing products
+
+This feature must include a backfill process.
+
+Existing products in the database currently do not have brand/producer information.
+
+Create a backfill process that:
+
+1. Gets existing products from the database.
+2. Uses their existing Rimi product URL.
+3. Re-fetches the Rimi product page.
+4. Extracts brand and producer.
+5. Normalizes the values.
+6. Finds/creates brand and producer records.
+7. Updates the product.
+8. Creates the brand-producer relationship where applicable.
+9. Continues if an individual product fails.
+
+Do not stop the entire backfill because one Rimi page fails.
+
+Log failures clearly.
+
+The backfill should be safe to run multiple times.
+
+Running it twice must not create duplicate:
+
+* brands
+* producers
+* brand_producers relationships
+
+---
+
+# 13. Rate limiting and scraping safety
+
+Use the existing scraper's request/rate-limiting/retry mechanism.
+
+If no suitable mechanism exists, add a conservative delay between Rimi requests.
+
+Do not create a large burst of requests to Rimi.
+
+Respect the project's existing error handling and retry conventions.
+
+The backfill should support progress logging such as:
+
+```text
+Processing 1234 / 12500
+Product: 275915
+Brand: Staburadze
+Producer: Orkla Latvija SIA
+Status: OK
+```
+
+And errors such as:
+
+```text
+Product: 123456
+Status: FAILED
+Reason: Rimi page returned HTTP 404
+```
+
+---
+
+# 14. Backfill command
+
+Add a dedicated command/job/script using the project's existing architecture.
+
+For example, something conceptually similar to:
+
+```text
+npm run backfill:brands-producers
+```
+
+or the equivalent appropriate to the existing project.
+
+Do not assume npm/Node if the project uses another stack.
+
+The command should:
+
+* process existing products
+* show progress
+* report successful extractions
+* report products with no brand/producer
+* report errors
+* be safe to restart
+* be safe to run more than once
+
+If possible, support options such as:
+
+```text
+--limit
+--offset
+```
+
+or equivalent, so a subset can be tested before running the complete backfill.
+
+---
+
+# 15. HTML parsing
+
+Inspect the actual Rimi page HTML before implementing the selector.
+
+The labels to look for are:
+
+```html
+<span>Zīmols</span>
+<span>Ražotājs</span>
+```
+
+Do not simply search the entire HTML with a fragile regular expression if the project already uses an HTML parser.
+
+Prefer the project's existing HTML parsing library.
+
+The extraction should be resilient to reasonable changes in surrounding HTML structure.
+
+For example, if the page structure is conceptually:
+
+```html
+<div>
+    <span>Zīmols</span>
+    <span>Staburadze</span>
+</div>
+```
+
+extract:
+
+```text
+Staburadze
+```
+
+Likewise for:
+
+```html
+<div>
+    <span>Ražotājs</span>
+    <span>Orkla Latvija SIA</span>
+</div>
+```
+
+Extract:
+
+```text
+Orkla Latvija SIA
+```
+
+However, inspect the real HTML and implement the selector based on the actual DOM relationship.
+
+---
+
+# 16. Empty/missing values
+
+Handle all of these safely:
+
+```text
+Zīmols exists, value exists
+Zīmols exists, value empty
+Zīmols doesn't exist
+
+Ražotājs exists, value exists
+Ražotājs exists, value empty
+Ražotājs doesn't exist
+```
+
+Empty strings should be treated as NULL/missing.
+
+Do not create:
+
+```text
+brands.name = ""
+producers.name = ""
+```
+
+Do not create `"Unknown"` records.
+
+---
+
+# 17. Data integrity
+
+Add database constraints where appropriate.
+
+At minimum:
+
+```text
+brands.normalized_name UNIQUE
+producers.normalized_name UNIQUE
+brand_producers (brand_id, producer_id) UNIQUE
+```
+
+Foreign keys should follow the project's existing conventions.
+
+Make sure deleting or modifying products cannot leave invalid foreign-key references.
+
+Do not cascade-delete master brand/producer records merely because a product is deleted unless that is consistent with the existing database architecture.
+
+---
+
+# 18. API / application layer
+
+If the project has an API or product JSON output, update it to expose the new information where appropriate.
+
+For a product, the output should be conceptually:
+
+```json
+{
+  "brand": {
+    "id": 123,
+    "name": "Staburadze",
+    "website_url": null
+  },
+  "producer": {
+    "id": 456,
+    "name": "Orkla Latvija SIA",
+    "website_url": null
+  }
+}
+```
+
+If only the brand exists:
+
+```json
+{
+  "brand": {
+    "id": 123,
+    "name": "Staburadze",
+    "website_url": null
+  },
+  "producer": null
+}
+```
+
+Follow the existing API response conventions.
+
+Do not expose database implementation details unnecessarily.
+
+---
+
+# 19. Brand/producer management
+
+If the project already has an admin interface, add basic management for:
+
+### Brands
+
+* list brands
+* see number of products using each brand
+* see associated producers
+* edit website URL
+
+### Producers
+
+* list producers
+* see number of products using each producer
+* see associated brands
+* edit website URL
+
+This can be minimal for the first implementation.
+
+The most important manual enrichment field is:
+
+```text
+website_url
+```
+
+Do not build automatic website discovery.
+
+The websites will be added manually later.
+
+---
+
+# 20. Tests
+
+Add automated tests following the project's existing testing framework.
+
+At minimum test:
+
+### Brand extraction
+
+Given HTML containing:
+
+```html
+<span>Zīmols</span>
+<span>Staburadze</span>
+```
+
+the extracted brand should be:
+
+```text
+Staburadze
+```
+
+### Producer extraction
+
+Given:
+
+```html
+<span>Ražotājs</span>
+<span>Orkla Latvija SIA</span>
+```
+
+the extracted producer should be:
+
+```text
+Orkla Latvija SIA
+```
+
+### Missing brand
+
+Producer exists but brand doesn't.
+
+Expected:
+
+```text
+brand = null
+producer = producer
+```
+
+### Missing producer
+
+Brand exists but producer doesn't.
+
+Expected:
+
+```text
+brand = brand
+producer = null
+```
+
+### Both missing
+
+Expected:
+
+```text
+brand = null
+producer = null
+```
+
+### Normalization
+
+These should resolve to the same brand:
+
+```text
+Staburadze
+STABURADZE
+staburadze
+ Staburadze
+Staburadze
+```
+
+### Producer normalization
+
+These should resolve to the same producer:
+
+```text
+Orkla Latvija SIA
+ORKLA LATVIJA SIA
+Orkla Latvija SIA 
+```
+
+### Duplicate prevention
+
+Scraping two products with:
+
+```text
+Brand: Staburadze
+Producer: Orkla Latvija SIA
+```
+
+must result in:
+
+```text
+1 brand
+1 producer
+1 brand_producers relationship
+2 products referencing them
+```
+
+### Website preservation
+
+If:
+
+```text
+brands.website_url = "https://example.com"
+```
+
+already exists, running the scraper must NOT replace it with NULL or another value.
+
+### Backfill idempotency
+
+Run the backfill twice.
+
+The second run must not create duplicate master records or relationships.
+
+---
+
+# 21. Migration and deployment
+
+Create the appropriate database migration(s) for:
+
+```text
+brands
+producers
+brand_producers
+products.brand_id
+products.producer_id
+```
+
+Make sure the migration works against the project's actual database.
+
+Do not manually modify the production database outside the project's migration mechanism.
+
+If existing products table contains a large number of records, make the migration safe and efficient.
+
+---
+
+# 22. Important architectural requirement
+
+Keep **brand** and **producer** as independent master entities.
+
+Do NOT store brand and producer only as text columns on products.
+
+The intended architecture is:
+
+```text
+                    ┌───────────┐
+                    │  brands   │
+                    └─────┬─────┘
+                          │
+                          │
+                  ┌───────▼────────┐
+                  │ brand_producers│
+                  └───────┬────────┘
+                          │
+                          │
+                    ┌─────▼──────┐
+                    │ producers  │
+                    └────────────┘
+
+
+products
+   │
+   ├── brand_id ────────→ brands
+   │
+   └── producer_id ─────→ producers
+```
+
+This is important because:
+
+* one producer can have multiple brands
+* one brand can be associated with multiple producers
+* products can use only a brand
+* products can use only a producer
+* website information belongs to the brand/producer entity, not the individual product
+
+---
+
+# 23. Do not overwrite manually enriched data
+
+The scraper is responsible for:
+
+* discovering brand/producer names
+* creating entities
+* linking products
+* creating brand-producer associations
+
+The scraper is NOT responsible for:
+
+* finding websites
+* changing manually entered website URLs
+* deleting brands/producers
+* replacing manually curated canonical information without a clear reason
+
+Treat `website_url` as manually managed data.
+
+---
+
+# 24. Final implementation report
+
+After implementing the feature, provide a concise report containing:
+
+1. Existing database technology/ORM discovered.
+2. Files changed.
+3. Database migration(s) created.
+4. New tables/models created.
+5. Product model changes.
+6. Brand/producer extraction implementation.
+7. Normalization/deduplication implementation.
+8. Backfill command and how to run it.
+9. Tests added.
+10. Test results.
+11. Number of existing products successfully backfilled, if the backfill was actually run.
+12. Number of products where brand/producer was unavailable.
+13. Number of scraping/extraction failures.
+14. Any assumptions or issues discovered in the actual Rimi HTML.
+
+Before considering the task complete, run the existing test suite and the new tests.
+
+Do not remove or weaken existing tests.
+
+One architectural detail I especially recommend keeping is the **`brand_producers` junction table** even though each product has only one brand and one producer. It prevents you from painting yourself into a corner later: `Orkla Latvija SIA → Staburadze` can coexist with `Orkla Latvija SIA → Laima`, while each product still has the simple `brand_id` + `producer_id` relationship you want.
