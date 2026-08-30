@@ -40,6 +40,10 @@ waitForPort = 5000
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 5010
+externalPort = 3001
+
 [agent]
 integrations = ["python_gemini_ai_integrations:1.0.0"]
 
