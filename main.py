@@ -747,8 +747,13 @@ def section_category_processing():
     """Section 1: Category Processing"""
     st.header("📦 Category Processing")
 
-    tab_queue, tab_nova, tab_ns_type = st.tabs(
-        ["📥 Job Queue", "🔢 NOVA Classification", "🥗 Nutri-Score Types"]
+    tab_queue, tab_nova, tab_ns_type, tab_entities = st.tabs(
+        [
+            "📥 Job Queue",
+            "🔢 NOVA Classification",
+            "🥗 Nutri-Score Types",
+            "Zīmoli un ražotāji",
+        ]
     )
 
     with tab_nova:
@@ -759,6 +764,65 @@ def section_category_processing():
 
     with tab_queue:
         _job_queue_section()
+
+    with tab_entities:
+        section_brand_producer_management()
+
+
+def section_brand_producer_management():
+    """List normalized entities and edit only their manually managed URLs."""
+    st.subheader("Zīmoli un ražotāji")
+    st.caption(
+        "Nosaukumus uztur skrāperis; tīmekļa vietņu adreses tiek rediģētas manuāli."
+    )
+    db = ProductViewDatabase()
+    try:
+        for entity_type, label, association_label in (
+            ("brand", "Zīmoli", "Ražotāji"),
+            ("producer", "Ražotāji", "Zīmoli"),
+        ):
+            with st.expander(label, expanded=(entity_type == "brand")):
+                entities = db.get_brand_producer_entities(entity_type)
+                if not entities:
+                    st.info("Datu vēl nav.")
+                    continue
+                st.dataframe(
+                    [
+                        {
+                            "Nosaukums": row["name"],
+                            "Produkti": row["product_count"],
+                            association_label: row["associations"],
+                            "Tīmekļa vietne": row["website_url"] or "",
+                        }
+                        for row in entities
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                by_name = {row["name"]: row for row in entities}
+                selected_name = st.selectbox(
+                    f"Rediģēt: {label.lower()}",
+                    list(by_name),
+                    key=f"{entity_type}_website_entity",
+                )
+                selected = by_name[selected_name]
+                website_url = st.text_input(
+                    "Tīmekļa vietnes URL",
+                    value=selected["website_url"] or "",
+                    key=f"{entity_type}_website_url_{selected['entity_id']}",
+                )
+                if st.button(
+                    "Saglabāt URL", key=f"save_{entity_type}_website"
+                ):
+                    if db.update_entity_website(
+                        entity_type, selected["entity_id"], website_url
+                    ):
+                        st.success("Saglabāts.")
+                        st.rerun()
+                    else:
+                        st.error("Ieraksts netika atrasts.")
+    finally:
+        db.close()
 
 
 def section_product_view():
@@ -1317,6 +1381,13 @@ def render_product_detail_view():
     if product.get('country_of_origin') and product.get('country_of_origin') != 'Unknown':
         st.subheader("🌍 Izcelsmes valsts")
         st.write(product['country_of_origin'])
+
+    if product.get('brand') or product.get('producer'):
+        st.subheader("Zīmols un ražotājs")
+        if product.get('brand'):
+            st.write(f"**Zīmols:** {product['brand']}")
+        if product.get('producer'):
+            st.write(f"**Ražotājs:** {product['producer']}")
     
     # Category
     st.subheader("📂 Kategorija")

@@ -114,6 +114,11 @@ class UpdateCoordinator:
                 
                 # Try to get nutrition data (this would be from detailed scraping)
                 nutrition_data = self._get_nutrition_data(website_data.url)
+                self.db_updater.save_brand_producer_data(
+                    product_id,
+                    nutrition_data.get('brand'),
+                    nutrition_data.get('producer'),
+                )
                 
                 if nutrition_data and nutrition_data.get('has_nutrition'):
                     # Add nutrition data with nutri-score calculation
@@ -234,6 +239,8 @@ class UpdateCoordinator:
             nutrition_data = {
                 'has_nutrition': False,
                 'ingredients': '',
+                'brand': None,
+                'producer': None,
                 'energy_kcal': 0,
                 'energy_kj': 0,
                 'fat_total': 0,
@@ -244,6 +251,8 @@ class UpdateCoordinator:
                 'salt': 0,
                 'fiber': 0
             }
+            from brand_producer import extract_brand_producer
+            nutrition_data.update(extract_brand_producer(soup))
             
             # Helper function to extract decimal values
             def extract_decimal(text: str) -> float:
@@ -469,7 +478,6 @@ class UpdateCoordinator:
                 return ""
             
             soup = BeautifulSoup(response.text, 'html.parser')
-            
             # Look for JSON-LD script with Product schema
             for script in soup.find_all('script', type='application/ld+json'):
                 try:
@@ -663,6 +671,11 @@ class UpdateCoordinator:
                         product_id = existing_product['product_id']
                         self.db_updater.add_nutrition_data(product_id, nutrition_data, category_code)
                         self.status_callback("Updated nutrition data")
+                    self.db_updater.save_brand_producer_data(
+                        existing_product['product_id'],
+                        nutrition_data.get('brand'),
+                        nutrition_data.get('producer'),
+                    )
                     
                     # Update photo if available
                     if image_url:
@@ -717,6 +730,11 @@ class UpdateCoordinator:
                 # Create new product
                 product_id = self.db_updater.add_new_product(product_data)
                 if product_id:
+                    self.db_updater.save_brand_producer_data(
+                        product_id,
+                        nutrition_data.get('brand'),
+                        nutrition_data.get('producer'),
+                    )
                     # Add nutrition data if available
                     if nutrition_data['has_nutrition']:
                         self.db_updater.add_nutrition_data(product_id, nutrition_data, category_code)

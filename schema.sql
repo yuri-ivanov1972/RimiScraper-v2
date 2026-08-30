@@ -33,6 +33,29 @@ CREATE TABLE IF NOT EXISTS normalized_categories (
 
 
 -- -----------------------------------------------------------
+-- brands / producers
+-- Independent normalized master entities referenced by products
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS brands (
+    brand_id        SERIAL PRIMARY KEY,
+    name            TEXT NOT NULL,
+    normalized_name TEXT NOT NULL UNIQUE,
+    website_url     TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS producers (
+    producer_id     SERIAL PRIMARY KEY,
+    name            TEXT NOT NULL,
+    normalized_name TEXT NOT NULL UNIQUE,
+    website_url     TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- -----------------------------------------------------------
 -- products
 -- One row per scraped product (SKU is the business key)
 -- -----------------------------------------------------------
@@ -43,6 +66,8 @@ CREATE TABLE IF NOT EXISTS products (
     name_norm           TEXT,
     rimi_url            TEXT        UNIQUE,
     category_id         INTEGER     NOT NULL REFERENCES normalized_categories (category_id),
+    brand_id            INTEGER REFERENCES brands (brand_id),
+    producer_id         INTEGER REFERENCES producers (producer_id),
     quantity_value      NUMERIC(10, 2),
     quantity_unit       VARCHAR(50),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,6 +81,18 @@ CREATE TABLE IF NOT EXISTS products (
     nova_score              INTEGER              CHECK (nova_score BETWEEN 1 AND 4),
     nova_source             VARCHAR(30),
     is_hidden               BOOLEAN      NOT NULL DEFAULT FALSE
+);
+
+
+-- -----------------------------------------------------------
+-- brand_producers
+-- Known brand -> producer associations (many-to-many)
+-- -----------------------------------------------------------
+CREATE TABLE IF NOT EXISTS brand_producers (
+    brand_id    INTEGER NOT NULL REFERENCES brands (brand_id) ON DELETE CASCADE,
+    producer_id INTEGER NOT NULL REFERENCES producers (producer_id) ON DELETE CASCADE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (brand_id, producer_id)
 );
 
 
@@ -308,7 +345,13 @@ CREATE INDEX IF NOT EXISTS idx_normalized_categories_nova ON normalized_categori
 -- products
 CREATE INDEX IF NOT EXISTS idx_products_sku         ON products (sku);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON products (category_id);
+CREATE INDEX IF NOT EXISTS idx_products_brand_id    ON products (brand_id);
+CREATE INDEX IF NOT EXISTS idx_products_producer_id ON products (producer_id);
 CREATE INDEX IF NOT EXISTS idx_products_name        ON products USING gin (name gin_trgm_ops);
+
+-- brand_producers
+CREATE INDEX IF NOT EXISTS idx_brand_producers_producer_id
+    ON brand_producers (producer_id);
 
 -- nutritionfacts
 CREATE INDEX IF NOT EXISTS idx_nutrition_product_id  ON nutritionfacts (product_id);

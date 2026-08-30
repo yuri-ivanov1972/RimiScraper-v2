@@ -1,4 +1,4 @@
-# Production Schema and Nutrition Validation Guide
+# Production Schema, Validation, and Brand Data Guide
 
 This guide covers the safe production rollout for the nutrition consistency
 checker. It does not copy Development data into Production and does not
@@ -83,3 +83,29 @@ Confirm:
 
 The backfill is a reporting operation only. It never changes scraped source
 data or automatically corrects nutrition values.
+
+## 5. Brand and producer rollout
+
+Migration `005_add_brands_and_producers.sql` adds independent `brands` and
+`producers` master tables, the many-to-many `brand_producers` table, and
+nullable product foreign keys. Apply it through the same Replit Publish schema
+flow described above; do not add it to application startup.
+
+After the production schema is available:
+
+```bash
+python brand_producer_backfill.py \
+  --production \
+  --confirm-production \
+  --batch-size 25 \
+  --delay 0.5
+```
+
+The command re-fetches saved Rimi URLs sequentially, uses the existing retry
+client, commits in batches, and isolates individual failures. Resume after an
+interruption with `--start-id SAFE_RESUME_AFTER_PRODUCT_ID`, using the printed
+`resume_after_product_id` value rather than the last attempted ID. If a row
+fails, that safe cursor stays before it so the failed row is retried. Reruns are safe:
+normalized names and brand-producer pairs are unique, existing canonical names
+and website URLs are preserved, and omitted scraped values do not clear a
+product's current links.

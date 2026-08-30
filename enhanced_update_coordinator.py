@@ -291,6 +291,8 @@ class EnhancedUpdateCoordinator:
                     'quantity_value': quantity_value,
                     'quantity_unit': quantity_unit,
                     'country_of_origin': nutrition_data.get('country_of_origin', 'Unknown'),
+                    'brand': product_data.get('brand') or nutrition_data.get('brand'),
+                    'producer': product_data.get('producer') or nutrition_data.get('producer'),
                     'price_per_unit': product_data.get('price_per_unit'),
                     'price_per_unit_type': product_data.get('price_per_unit_type'),
                     'discount_price': product_data.get('discount_price'),
@@ -416,6 +418,8 @@ class EnhancedUpdateCoordinator:
                 'name': product_data['name'],
                 'price': product_data['price'],
                 'url': product_data['url'],
+                'brand': product_data.get('brand'),
+                'producer': product_data.get('producer'),
                 'category_id': category_id,
                 'quantity_value': quantity_value,
                 'quantity_unit': quantity_unit,
@@ -543,7 +547,21 @@ class EnhancedUpdateCoordinator:
                 update_data = {
                     'country_of_origin': nutrition_data['country_of_origin']
                 }
+                if 'brand' in product_data:
+                    update_data['brand'] = product_data.get('brand')
+                if 'producer' in product_data:
+                    update_data['producer'] = product_data.get('producer')
                 self.db_updater.force_update_product_data(sku, update_data, force_overwrite=False, is_new_product=True)
+            elif 'brand' in product_data or 'producer' in product_data:
+                self.db_updater.force_update_product_data(
+                    sku,
+                    {
+                        'brand': product_data.get('brand'),
+                        'producer': product_data.get('producer'),
+                    },
+                    force_overwrite=False,
+                    is_new_product=True,
+                )
             
             # Update nutrition data if available
             if nutrition_data.get('has_nutrition'):
@@ -587,6 +605,8 @@ class EnhancedUpdateCoordinator:
                 'quantity_value': product_data.get('quantity_value'),
                 'quantity_unit': product_data.get('quantity_unit'),
                 'country_of_origin': nutrition_data.get('country_of_origin', 'Unknown'),
+                'brand': product_data.get('brand') or nutrition_data.get('brand'),
+                'producer': product_data.get('producer') or nutrition_data.get('producer'),
                 'nutrition_data': nutrition_data,
                 'ingredients': nutrition_data.get('ingredients', ''),
                 'photos': product_data.get('photos', []),
@@ -601,6 +621,8 @@ class EnhancedUpdateCoordinator:
                 'sku': sku,
                 'name': product_data['name'],
                 'url': product_data['url'],
+                'brand': product_data.get('brand'),
+                'producer': product_data.get('producer'),
                 'category_id': category_id,
                 'price': product_data['price'],
                 'is_available': product_data.get('is_available', True),

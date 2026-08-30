@@ -13,6 +13,7 @@ import re
 from decimal import Decimal
 from nutriscore_calculator import NutriscoreCalculator
 from ingredient_processor import IngredientProcessor
+from brand_producer import upsert_brand_producer
 
 class DatabaseUpdater:
     """Core database updater for PRODUCTS_DB_URL database"""
@@ -143,6 +144,15 @@ class DatabaseUpdater:
             )
             
             product_id = result[0]['product_id']
+
+            # Missing detail fields are ignored; existing relationships survive.
+            upsert_brand_producer(
+                self.conn,
+                product_id,
+                brand_name=product_data.get('brand'),
+                producer_name=product_data.get('producer'),
+                status_callback=self.status_callback,
+            )
             
             # Add initial price history record with new price fields
             if price and price != 'N/A':
@@ -188,6 +198,28 @@ class DatabaseUpdater:
         except Exception as e:
             self.conn.rollback()
             raise Exception(f"Failed to add product {sku}: {str(e)}")
+
+    def save_brand_producer_data(
+        self,
+        product_id: int,
+        brand_name: Optional[str] = None,
+        producer_name: Optional[str] = None,
+    ) -> bool:
+        """Attach scraped master data without clearing omitted values."""
+        try:
+            upsert_brand_producer(
+                self.conn,
+                product_id,
+                brand_name=brand_name,
+                producer_name=producer_name,
+                status_callback=self.status_callback,
+            )
+            self.conn.commit()
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            self.status_callback(f"Brand/producer save failed: {e}")
+            return False
     
     def add_nutrition_data(self, product_id: int, nutrition_data: Dict, category_code: str = None) -> bool:
         """

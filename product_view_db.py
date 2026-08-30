@@ -97,6 +97,83 @@ class ProductViewDatabase:
             cursor.execute(query)
             results = cursor.fetchall()
             return {row['category_id']: row['product_count'] for row in results}
+
+    def get_brand_producer_entities(self, entity_type: str) -> List[Dict]:
+        """List brand/producer entities with usage and known associations."""
+        self._ensure_connection()
+        if entity_type == "brand":
+            query = """
+                SELECT
+                    b.brand_id AS entity_id,
+                    b.name,
+                    b.website_url,
+                    COUNT(DISTINCT p.product_id) AS product_count,
+                    COALESCE(
+                        STRING_AGG(DISTINCT pr.name, ', ' ORDER BY pr.name),
+                        ''
+                    ) AS associations
+                FROM brands b
+                LEFT JOIN products p ON p.brand_id = b.brand_id
+                LEFT JOIN brand_producers bp ON bp.brand_id = b.brand_id
+                LEFT JOIN producers pr ON pr.producer_id = bp.producer_id
+                GROUP BY b.brand_id, b.name, b.website_url
+                ORDER BY b.name
+            """
+        elif entity_type == "producer":
+            query = """
+                SELECT
+                    pr.producer_id AS entity_id,
+                    pr.name,
+                    pr.website_url,
+                    COUNT(DISTINCT p.product_id) AS product_count,
+                    COALESCE(
+                        STRING_AGG(DISTINCT b.name, ', ' ORDER BY b.name),
+                        ''
+                    ) AS associations
+                FROM producers pr
+                LEFT JOIN products p ON p.producer_id = pr.producer_id
+                LEFT JOIN brand_producers bp ON bp.producer_id = pr.producer_id
+                LEFT JOIN brands b ON b.brand_id = bp.brand_id
+                GROUP BY pr.producer_id, pr.name, pr.website_url
+                ORDER BY pr.name
+            """
+        else:
+            raise ValueError("entity_type must be 'brand' or 'producer'")
+
+        with self.connection.cursor() as cursor:
+            cursor.execute(query)
+            return [dict(row) for row in cursor.fetchall()]
+
+    def update_entity_website(
+        self, entity_type: str, entity_id: int, website_url: Optional[str]
+    ) -> bool:
+        """Update only the manually managed website URL for one entity."""
+        self._ensure_connection()
+        if entity_type == "brand":
+            table, id_column = "brands", "brand_id"
+        elif entity_type == "producer":
+            table, id_column = "producers", "producer_id"
+        else:
+            raise ValueError("entity_type must be 'brand' or 'producer'")
+
+        cleaned_url = website_url.strip() if website_url else None
+        cleaned_url = cleaned_url or None
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    UPDATE {table}
+                    SET website_url = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE {id_column} = %s
+                    """,
+                    (cleaned_url, entity_id),
+                )
+                updated = cursor.rowcount == 1
+            self.connection.commit()
+            return updated
+        except Exception:
+            self.connection.rollback()
+            raise
     
     def get_products_by_category(
         self, 
@@ -151,10 +228,14 @@ class ProductViewDatabase:
             nf.salt,
             nf.energy_kj,
             pp.photo_url,
+            b.name AS brand,
+            pr.name AS producer,
             p.nova_score,
             p.nova_source
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+        LEFT JOIN brands b ON p.brand_id = b.brand_id
+        LEFT JOIN producers pr ON p.producer_id = pr.producer_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
         LEFT JOIN LATERAL (
             SELECT photo_url 
@@ -228,6 +309,8 @@ class ProductViewDatabase:
             p.quantity_unit,
             p.rimi_url,
             p.country_of_origin,
+            b.name AS brand,
+            pr.name AS producer,
             nc.rimi_category_code,
             nc.name_lv as category_name,
             nf.nutri_score_grade,
@@ -248,6 +331,8 @@ class ProductViewDatabase:
             p.is_hidden
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+        LEFT JOIN brands b ON p.brand_id = b.brand_id
+        LEFT JOIN producers pr ON p.producer_id = pr.producer_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
         WHERE p.product_id = %s
         """
@@ -328,10 +413,14 @@ class ProductViewDatabase:
             nf.protein,
             nf.salt,
             pp.photo_url,
+            b.name AS brand,
+            pr.name AS producer,
             p.nova_score,
             p.nova_source
         FROM products p
         LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+        LEFT JOIN brands b ON p.brand_id = b.brand_id
+        LEFT JOIN producers pr ON p.producer_id = pr.producer_id
         LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
         LEFT JOIN LATERAL (
             SELECT photo_url 

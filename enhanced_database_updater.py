@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Tuple
 from decimal import Decimal
 import re
 import time
+from brand_producer import upsert_brand_producer
 
 class EnhancedDatabaseUpdater:
     """Enhanced database updater with forced update capabilities for corrupted data"""
@@ -124,7 +125,7 @@ class EnhancedDatabaseUpdater:
                 return False
             
             product_id = existing_product['product_id']
-            
+
             # Prepare update fields
             update_fields = []
             update_values = []
@@ -243,6 +244,17 @@ class EnhancedDatabaseUpdater:
                     self.status_callback(f"✓ Successfully saved {len(product_data['photos'])} photo(s) for product {sku}")
                 else:
                     self.status_callback(f"⚠ Failed to save photos for product {sku} - check logs above for specific error")
+
+            # Link master data last so failures in the earlier enhanced update
+            # cannot leave a brand/producer association from an unsuccessful run.
+            if 'brand' in product_data or 'producer' in product_data:
+                upsert_brand_producer(
+                    self.conn,
+                    product_id,
+                    brand_name=product_data.get('brand'),
+                    producer_name=product_data.get('producer'),
+                    status_callback=self.status_callback,
+                )
             
             self.conn.commit()
             self.status_callback(f"Successfully force-updated product {sku}")
@@ -251,6 +263,28 @@ class EnhancedDatabaseUpdater:
         except Exception as e:
             self.conn.rollback()
             self.status_callback(f"Error force-updating product {sku}: {str(e)}")
+            return False
+
+    def save_brand_producer_data(
+        self,
+        product_id: int,
+        brand_name: Optional[str] = None,
+        producer_name: Optional[str] = None,
+    ) -> bool:
+        """Attach scraped master data without clearing omitted values."""
+        try:
+            upsert_brand_producer(
+                self.conn,
+                product_id,
+                brand_name=brand_name,
+                producer_name=producer_name,
+                status_callback=self.status_callback,
+            )
+            self.conn.commit()
+            return True
+        except Exception as e:
+            self.conn.rollback()
+            self.status_callback(f"Brand/producer save failed: {e}")
             return False
     
     def force_update_nutrition_data(self, product_id: int, nutrition_data: Dict, force_overwrite: bool = True) -> bool:

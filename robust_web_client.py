@@ -15,6 +15,7 @@ class RobustWebClient:
     def __init__(self, status_callback=None):
         self.status_callback = status_callback or (lambda msg: print(msg))
         self.session = None
+        self.last_fetch_status_code = None
         self._create_session()
     
     def _create_session(self):
@@ -43,6 +44,7 @@ class RobustWebClient:
             Response object if successful, None if all attempts failed
         """
         last_error = None
+        self.last_fetch_status_code = None
         
         for attempt in range(max_attempts):
             try:
@@ -50,6 +52,7 @@ class RobustWebClient:
                 
                 # Add timeout to prevent hanging
                 response = self.session.get(url, timeout=30)
+                self.last_fetch_status_code = response.status_code
                 
                 if response.status_code == 200:
                     self.status_callback(f"Successfully fetched {url}")
@@ -128,6 +131,10 @@ class RobustWebClient:
                 
                 # Extract product photos
                 photos = self._extract_photos(soup)
+
+                # Brand and producer live in the embedded product-details HTML.
+                from brand_producer import extract_brand_producer
+                brand_producer = extract_brand_producer(soup)
                 
                 # Extract availability status
                 is_available = self._extract_availability(soup)
@@ -141,6 +148,8 @@ class RobustWebClient:
                     'discount_price': price_data['discount_price'],
                     'discount_price_per_unit': price_data['discount_price_per_unit'],
                     'is_available': is_available,
+                    'brand': brand_producer['brand'],
+                    'producer': brand_producer['producer'],
                     'url': pattern,
                     'soup': soup  # Include soup for further processing
                 }
@@ -700,6 +709,8 @@ class RobustWebClient:
         nutrition_data = {
             'has_nutrition': False,
             'ingredients_text': '',
+            'brand': None,
+            'producer': None,
             'category_code': '',
             'category_path_full': '',
             'country_of_origin': 'Unknown',
@@ -727,6 +738,9 @@ class RobustWebClient:
             self.status_callback(f"Error in category extraction: {str(e)}")
         
         try:
+            from brand_producer import extract_brand_producer
+            nutrition_data.update(extract_brand_producer(soup))
+
             # Helper function to extract decimal values
             def extract_decimal(text: str) -> float:
                 try:
