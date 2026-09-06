@@ -408,7 +408,7 @@ class ProcessingWorker:
     def _process_suspicious_refresh_job(self, job: dict):
         """Full-scrape and then revalidate a snapshot of suspicious products."""
         from enhanced_update_coordinator import EnhancedUpdateCoordinator
-        from suspicious_refresh import validate_product, verify_refresh_schema
+        from suspicious_refresh import validate_product
 
         job_id = job['id']
         total_products = job['total_products']
@@ -429,23 +429,22 @@ class ProcessingWorker:
 
         try:
             conn = self._get_db_connection()
-            verify_refresh_schema(conn)
-            self.logger.info(
-                f"[Refresh #{job_id}] Database status schema verified"
-            )
             with conn.cursor() as cur:
                 # Resume interrupted individual work at the beginning of its phase.
                 cur.execute("""
                     UPDATE product_processing_log
                     SET status = 'pending', scrape_status = 'pending',
+                        validation_status = 'pending',
                         error_message = 'Reset interrupted scrape'
-                    WHERE job_id = %s AND status = 'processing'
+                    WHERE job_id = %s AND scrape_status = 'processing'
                 """, (job_id,))
                 cur.execute("""
                     UPDATE product_processing_log
-                    SET status = 'scraped', validation_status = 'pending',
+                    SET status = 'processing', validation_status = 'pending',
                         error_message = 'Reset interrupted validation'
-                    WHERE job_id = %s AND status = 'validating'
+                    WHERE job_id = %s
+                      AND scrape_status = 'completed'
+                      AND validation_status = 'processing'
                 """, (job_id,))
                 cur.execute("""
                     UPDATE category_processing_jobs
@@ -501,7 +500,7 @@ class ProcessingWorker:
                     with conn.cursor() as cur:
                         cur.execute("""
                             UPDATE product_processing_log
-                            SET status = 'scraped', scrape_status = 'completed',
+                            SET status = 'processing', scrape_status = 'completed',
                                 validation_status = 'pending',
                                 error_message = NULL,
                                 processed_at = CURRENT_TIMESTAMP
@@ -567,7 +566,7 @@ class ProcessingWorker:
                 with conn.cursor() as cur:
                     cur.execute("""
                         UPDATE product_processing_log
-                        SET status = 'validating', validation_status = 'processing',
+                        SET status = 'processing', validation_status = 'processing',
                             processed_at = CURRENT_TIMESTAMP
                         WHERE id = %s
                     """, (row['id'],))

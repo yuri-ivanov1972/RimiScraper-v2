@@ -1,12 +1,19 @@
 import unittest
-from pathlib import Path
+import inspect
+import os
+import re
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 from enhanced_update_coordinator import EnhancedUpdateCoordinator
 from suspicious_refresh import (
+    LEGACY_PRODUCT_STATUSES,
     is_active_refresh_job,
     queue_suspicious_refresh,
     validate_product,
-    verify_refresh_schema,
 )
 from worker import ProcessingWorker
 
@@ -129,35 +136,23 @@ class ValidationConnection:
         self.commits += 1
 
 
-class SchemaCursor:
-    def __init__(self, definition):
-        self.definition = definition
+class NoCloseConnection:
+    """Delegate a test connection while letting the test inspect it afterward."""
 
-    def __enter__(self):
-        return self
+    def __init__(self, connection):
+        self.connection = connection
 
-    def __exit__(self, exc_type, exc, traceback):
-        return False
+    def cursor(self, *args, **kwargs):
+        return self.connection.cursor(*args, **kwargs)
 
-    def execute(self, query, params=None):
+    def commit(self):
+        self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
+
+    def close(self):
         pass
-
-    def fetchone(self):
-        return {"definition": self.definition} if self.definition else None
-
-
-class SchemaConnection:
-    def __init__(self, statuses):
-        self.definition = (
-            None
-            if statuses is None
-            else "CHECK (status IN ("
-            + ", ".join(f"'{status}'" for status in statuses)
-            + "))"
-        )
-
-    def cursor(self, cursor_factory=None):
-        return SchemaCursor(self.definition)
 
 
 class FakeWebClient:
@@ -213,55 +208,275 @@ class SuspiciousRefreshTests(unittest.TestCase):
     def test_completed_refresh_is_not_active(self):
         self.assertIs(is_active_refresh_job({"status": "completed"}), False)
 
-    def test_refresh_schema_accepts_all_worker_statuses(self):
-        verify_refresh_schema(
-            SchemaConnection(
-                [
-                    "pending",
-                    "processing",
-                    "scraped",
-                    "validating",
-                    "completed",
-                    "failed",
-                    "skipped",
-                ]
-            )
+    def test_refresh_uses_only_production_compatible_shared_statuses(self):
+        self.assertEqual(
+            LEGACY_PRODUCT_STATUSES,
+            {"pending", "processing", "completed", "failed", "skipped"},
         )
 
-    def test_refresh_schema_accepts_database_without_status_constraint(self):
-        verify_refresh_schema(SchemaConnection(None))
+    def test_worker_refresh_sql_uses_only_legacy_shared_statuses(self):
+        source = inspect.getsource(
+            ProcessingWorker._process_suspicious_refresh_job
+        )
+        assigned_statuses = set(
+            re.findall(r"SET status = '([a-z_]+)'", source)
+        )
+        self.assertTrue(assigned_statuses)
+        self.assertLessEqual(assigned_statuses, LEGACY_PRODUCT_STATUSES)
+        self.assertIn("scrape_status = 'processing'", source)
+        self.assertIn("validation_status = 'processing'", source)
 
-    def test_refresh_schema_rejects_missing_intermediate_statuses(self):
-        with self.assertRaisesRegex(RuntimeError, "scraped, validating"):
-            verify_refresh_schema(
-                SchemaConnection(
-                    [
-                        "pending",
-                        "processing",
-                        "completed",
-                        "failed",
-                        "skipped",
-                    ]
+    @unittest.skipUnless(
+        os.environ.get("DATABASE_URL"),
+        "Development database is unavailable",
+    )
+    def test_worker_statuses_satisfy_production_constraint(self):
+        connection = psycopg2.connect(os.environ["DATABASE_URL"])
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TEMP TABLE refresh_status_compatibility (
+                        id SERIAL PRIMARY KEY,
+                        status VARCHAR(20) CHECK (
+                            status IN (
+                                'pending', 'processing', 'completed',
+                                'failed', 'skipped'
+                            )
+                        ),
+                        scrape_status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                        validation_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+                    )
+                    """
                 )
-            )
+                cursor.execute(
+                    """
+                    INSERT INTO refresh_status_compatibility (status)
+                    VALUES ('pending')
+                    RETURNING id
+                    """
+                )
+                row_id = cursor.fetchone()[0]
 
-    def test_bootstrap_schema_names_refresh_status_constraint(self):
-        schema = Path("schema.sql").read_text()
-        self.assertIn(
-            "CONSTRAINT check_product_status CHECK (status IN (",
-            schema,
-        )
+                # Full successful lifecycle under the production constraint.
+                cursor.execute(
+                    """
+                    UPDATE refresh_status_compatibility
+                    SET status = 'processing', scrape_status = 'processing'
+                    WHERE id = %s
+                    """,
+                    (row_id,),
+                )
+                cursor.execute(
+                    """
+                    UPDATE refresh_status_compatibility
+                    SET status = 'processing', scrape_status = 'completed',
+                        validation_status = 'pending'
+                    WHERE id = %s
+                    """,
+                    (row_id,),
+                )
+                cursor.execute(
+                    """
+                    UPDATE refresh_status_compatibility
+                    SET status = 'processing', validation_status = 'processing'
+                    WHERE id = %s
+                    """,
+                    (row_id,),
+                )
+                cursor.execute(
+                    """
+                    UPDATE refresh_status_compatibility
+                    SET status = 'completed', validation_status = 'completed'
+                    WHERE id = %s
+                    """,
+                    (row_id,),
+                )
 
-    def test_forward_migration_normalizes_legacy_constraint_names(self):
-        migration = Path(
-            "migrations/007_allow_suspicious_refresh_product_statuses.sql"
-        ).read_text()
-        self.assertIn("DROP CONSTRAINT IF EXISTS check_product_status", migration)
-        self.assertIn(
-            "DROP CONSTRAINT IF EXISTS product_processing_log_status_check",
-            migration,
+                # Interrupted scrape and validation resume independently.
+                cursor.execute(
+                    """
+                    INSERT INTO refresh_status_compatibility (
+                        status, scrape_status, validation_status
+                    )
+                    VALUES
+                        ('processing', 'processing', 'pending'),
+                        ('processing', 'completed', 'processing')
+                    """
+                )
+                cursor.execute(
+                    """
+                    UPDATE refresh_status_compatibility
+                    SET status = 'pending', scrape_status = 'pending',
+                        validation_status = 'pending'
+                    WHERE scrape_status = 'processing'
+                    """
+                )
+                cursor.execute(
+                    """
+                    UPDATE refresh_status_compatibility
+                    SET status = 'processing', validation_status = 'pending'
+                    WHERE scrape_status = 'completed'
+                      AND validation_status = 'processing'
+                    """
+                )
+                cursor.execute(
+                    """
+                    SELECT status, scrape_status, validation_status
+                    FROM refresh_status_compatibility
+                    ORDER BY id
+                    """
+                )
+                self.assertEqual(
+                    cursor.fetchall(),
+                    [
+                        ("completed", "completed", "completed"),
+                        ("pending", "pending", "pending"),
+                        ("processing", "completed", "pending"),
+                    ],
+                )
+        finally:
+            connection.rollback()
+            connection.close()
+
+    @unittest.skipUnless(
+        os.environ.get("DATABASE_URL"),
+        "Development database is unavailable",
+    )
+    def test_full_worker_refresh_with_production_constraint(self):
+        connection = psycopg2.connect(
+            os.environ["DATABASE_URL"],
+            cursor_factory=RealDictCursor,
         )
-        self.assertIn("ADD CONSTRAINT check_product_status", migration)
+        wrapped_connection = NoCloseConnection(connection)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TEMP TABLE category_processing_jobs (
+                        id INTEGER PRIMARY KEY,
+                        status VARCHAR(20) NOT NULL,
+                        phase VARCHAR(20) NOT NULL,
+                        total_products INTEGER NOT NULL,
+                        processed_count INTEGER NOT NULL DEFAULT 0,
+                        validation_completed_count INTEGER NOT NULL DEFAULT 0,
+                        validation_failed_count INTEGER NOT NULL DEFAULT 0,
+                        current_worker_id VARCHAR(100),
+                        last_updated TIMESTAMP,
+                        completed_at TIMESTAMP
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE TEMP TABLE product_processing_log (
+                        id INTEGER PRIMARY KEY,
+                        job_id INTEGER NOT NULL,
+                        sku VARCHAR(50) NOT NULL,
+                        product_id INTEGER,
+                        status VARCHAR(20) NOT NULL CHECK (
+                            status IN (
+                                'pending', 'processing', 'completed',
+                                'failed', 'skipped'
+                            )
+                        ),
+                        scrape_status VARCHAR(20) NOT NULL,
+                        validation_status VARCHAR(20) NOT NULL,
+                        error_message TEXT,
+                        processed_at TIMESTAMP
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO category_processing_jobs (
+                        id, status, phase, total_products, current_worker_id
+                    )
+                    VALUES (42, 'in_progress', 'queued', 1, 'test-worker')
+                    """
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO product_processing_log (
+                        id, job_id, sku, product_id, status,
+                        scrape_status, validation_status
+                    )
+                    VALUES (
+                        1, 42, 'SKU-7', 7, 'pending', 'pending', 'pending'
+                    )
+                    """
+                )
+            connection.commit()
+
+            class FakeCoordinator:
+                def __init__(self, status_callback):
+                    pass
+
+                def process_single_product_with_auto_category(self, *args, **kwargs):
+                    return SimpleNamespace(
+                        success=True,
+                        changes={},
+                        errors=[],
+                    )
+
+                def close(self):
+                    pass
+
+            worker = ProcessingWorker.__new__(ProcessingWorker)
+            worker.worker_id = "test-worker"
+            worker.current_job_id = None
+            worker.logger = Mock()
+            worker._get_db_connection = lambda: wrapped_connection
+            worker.update_heartbeat = lambda *args, **kwargs: None
+            worker.log_event = lambda *args, **kwargs: None
+
+            with (
+                patch(
+                    "enhanced_update_coordinator.EnhancedUpdateCoordinator",
+                    FakeCoordinator,
+                ),
+                patch("suspicious_refresh.validate_product", lambda *args: {}),
+            ):
+                worker._process_suspicious_refresh_job(
+                    {"id": 42, "total_products": 1}
+                )
+
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT status, phase, processed_count,
+                           validation_completed_count
+                    FROM category_processing_jobs
+                    WHERE id = 42
+                    """
+                )
+                self.assertEqual(
+                    dict(cursor.fetchone()),
+                    {
+                        "status": "completed",
+                        "phase": "completed",
+                        "processed_count": 1,
+                        "validation_completed_count": 1,
+                    },
+                )
+                cursor.execute(
+                    """
+                    SELECT status, scrape_status, validation_status
+                    FROM product_processing_log
+                    WHERE id = 1
+                    """
+                )
+                self.assertEqual(
+                    dict(cursor.fetchone()),
+                    {
+                        "status": "completed",
+                        "scrape_status": "completed",
+                        "validation_status": "completed",
+                    },
+                )
+        finally:
+            connection.rollback()
+            connection.close()
 
     def test_queue_snapshots_all_suspicious_products(self):
         connection = QueueConnection()

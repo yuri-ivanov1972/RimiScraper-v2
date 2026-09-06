@@ -281,8 +281,7 @@ CREATE TABLE IF NOT EXISTS product_processing_log (
     sku             VARCHAR(50)  NOT NULL,
     status          VARCHAR(20)  NOT NULL DEFAULT 'pending'
                     CONSTRAINT check_product_status CHECK (status IN (
-                        'pending', 'processing', 'scraped', 'validating',
-                        'completed', 'failed', 'skipped'
+                        'pending', 'processing', 'completed', 'failed', 'skipped'
                     )),
     error_message   TEXT,
     processed_at    TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
