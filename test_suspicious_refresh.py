@@ -1,7 +1,11 @@
 import unittest
 
 from enhanced_update_coordinator import EnhancedUpdateCoordinator
-from suspicious_refresh import queue_suspicious_refresh, validate_product
+from suspicious_refresh import (
+    is_active_refresh_job,
+    queue_suspicious_refresh,
+    validate_product,
+)
 from worker import ProcessingWorker
 
 
@@ -166,6 +170,16 @@ class FakeDatabaseUpdater:
 
 
 class SuspiciousRefreshTests(unittest.TestCase):
+    def test_empty_refresh_history_is_not_active(self):
+        self.assertIs(is_active_refresh_job(None), False)
+
+    def test_queued_and_running_refreshes_are_active(self):
+        self.assertIs(is_active_refresh_job({"status": "queued"}), True)
+        self.assertIs(is_active_refresh_job({"status": "in_progress"}), True)
+
+    def test_completed_refresh_is_not_active(self):
+        self.assertIs(is_active_refresh_job({"status": "completed"}), False)
+
     def test_queue_snapshots_all_suspicious_products(self):
         connection = QueueConnection()
         job_id, count = queue_suspicious_refresh(connection)

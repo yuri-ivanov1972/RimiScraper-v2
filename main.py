@@ -1964,6 +1964,7 @@ def _render_suspicious_refresh_controls(db, suspicious_count):
     from suspicious_refresh import (
         get_latest_refresh_status,
         get_refresh_failures,
+        is_active_refresh_job,
         queue_suspicious_refresh,
     )
 
@@ -1980,10 +1981,7 @@ def _render_suspicious_refresh_controls(db, suspicious_count):
         st.warning(f"Refresh jobs are not available yet: {exc}")
         return
 
-    active_job = (
-        latest_job
-        and latest_job["status"] in ("queued", "in_progress")
-    )
+    active_job = is_active_refresh_job(latest_job)
     action_col, refresh_col = st.columns([2, 1])
     with action_col:
         queue_clicked = st.button(

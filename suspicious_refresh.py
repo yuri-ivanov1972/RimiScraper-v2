@@ -14,6 +14,11 @@ JOB_TYPE = "suspicious_refresh"
 ACTIVE_STATUSES = ("queued", "in_progress")
 
 
+def is_active_refresh_job(job: dict[str, Any] | None) -> bool:
+    """Return an explicit boolean suitable for Streamlit widget properties."""
+    return bool(job and job.get("status") in ACTIVE_STATUSES)
+
+
 def queue_suspicious_refresh(connection, requested_by: str = "checks_ui") -> tuple[int, int]:
     """Snapshot all currently suspicious products into one durable job."""
     with connection.cursor(cursor_factory=RealDictCursor) as cursor:
