@@ -1,10 +1,12 @@
 import unittest
+from pathlib import Path
 
 from enhanced_update_coordinator import EnhancedUpdateCoordinator
 from suspicious_refresh import (
     is_active_refresh_job,
     queue_suspicious_refresh,
     validate_product,
+    verify_refresh_schema,
 )
 from worker import ProcessingWorker
 
@@ -127,6 +129,37 @@ class ValidationConnection:
         self.commits += 1
 
 
+class SchemaCursor:
+    def __init__(self, definition):
+        self.definition = definition
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        pass
+
+    def fetchone(self):
+        return {"definition": self.definition} if self.definition else None
+
+
+class SchemaConnection:
+    def __init__(self, statuses):
+        self.definition = (
+            None
+            if statuses is None
+            else "CHECK (status IN ("
+            + ", ".join(f"'{status}'" for status in statuses)
+            + "))"
+        )
+
+    def cursor(self, cursor_factory=None):
+        return SchemaCursor(self.definition)
+
+
 class FakeWebClient:
     def get_product_data(self, sku):
         return {
@@ -179,6 +212,56 @@ class SuspiciousRefreshTests(unittest.TestCase):
 
     def test_completed_refresh_is_not_active(self):
         self.assertIs(is_active_refresh_job({"status": "completed"}), False)
+
+    def test_refresh_schema_accepts_all_worker_statuses(self):
+        verify_refresh_schema(
+            SchemaConnection(
+                [
+                    "pending",
+                    "processing",
+                    "scraped",
+                    "validating",
+                    "completed",
+                    "failed",
+                    "skipped",
+                ]
+            )
+        )
+
+    def test_refresh_schema_accepts_database_without_status_constraint(self):
+        verify_refresh_schema(SchemaConnection(None))
+
+    def test_refresh_schema_rejects_missing_intermediate_statuses(self):
+        with self.assertRaisesRegex(RuntimeError, "scraped, validating"):
+            verify_refresh_schema(
+                SchemaConnection(
+                    [
+                        "pending",
+                        "processing",
+                        "completed",
+                        "failed",
+                        "skipped",
+                    ]
+                )
+            )
+
+    def test_bootstrap_schema_names_refresh_status_constraint(self):
+        schema = Path("schema.sql").read_text()
+        self.assertIn(
+            "CONSTRAINT check_product_status CHECK (status IN (",
+            schema,
+        )
+
+    def test_forward_migration_normalizes_legacy_constraint_names(self):
+        migration = Path(
+            "migrations/007_allow_suspicious_refresh_product_statuses.sql"
+        ).read_text()
+        self.assertIn("DROP CONSTRAINT IF EXISTS check_product_status", migration)
+        self.assertIn(
+            "DROP CONSTRAINT IF EXISTS product_processing_log_status_check",
+            migration,
+        )
+        self.assertIn("ADD CONSTRAINT check_product_status", migration)
 
     def test_queue_snapshots_all_suspicious_products(self):
         connection = QueueConnection()

@@ -279,7 +279,11 @@ CREATE TABLE IF NOT EXISTS product_processing_log (
     id              SERIAL PRIMARY KEY,
     job_id          INTEGER      NOT NULL REFERENCES category_processing_jobs (id),
     sku             VARCHAR(50)  NOT NULL,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'pending',
+    status          VARCHAR(20)  NOT NULL DEFAULT 'pending'
+                    CONSTRAINT check_product_status CHECK (status IN (
+                        'pending', 'processing', 'scraped', 'validating',
+                        'completed', 'failed', 'skipped'
+                    )),
     error_message   TEXT,
     processed_at    TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
     product_id      INTEGER REFERENCES products (product_id),

@@ -408,12 +408,19 @@ class ProcessingWorker:
     def _process_suspicious_refresh_job(self, job: dict):
         """Full-scrape and then revalidate a snapshot of suspicious products."""
         from enhanced_update_coordinator import EnhancedUpdateCoordinator
-        from suspicious_refresh import validate_product
+        from suspicious_refresh import validate_product, verify_refresh_schema
 
         job_id = job['id']
+        total_products = job['total_products']
         self.current_job_id = job_id
         coordinator = None
         conn = None
+        self.logger.info("=" * 72)
+        self.logger.info(
+            f"[Refresh #{job_id}] Starting suspicious-product refresh "
+            f"for {total_products} products"
+        )
+        self.logger.info("=" * 72)
         self.log_event(
             job_id,
             'job_started',
@@ -422,6 +429,10 @@ class ProcessingWorker:
 
         try:
             conn = self._get_db_connection()
+            verify_refresh_schema(conn)
+            self.logger.info(
+                f"[Refresh #{job_id}] Database status schema verified"
+            )
             with conn.cursor() as cur:
                 # Resume interrupted individual work at the beginning of its phase.
                 cur.execute("""
@@ -455,8 +466,16 @@ class ProcessingWorker:
                 """, (job_id,))
                 scrape_rows = cur.fetchall()
 
-            for row in scrape_rows:
+            self.logger.info(
+                f"[Refresh #{job_id}] SCRAPING phase: "
+                f"{len(scrape_rows)} products pending"
+            )
+            for scrape_index, row in enumerate(scrape_rows, start=1):
                 self._ensure_refresh_job_ownership(conn, job_id)
+                self.logger.info(
+                    f"[Refresh #{job_id}] [Scrape {scrape_index}/"
+                    f"{len(scrape_rows)}] Starting SKU {row['sku']}"
+                )
                 with conn.cursor() as cur:
                     cur.execute("""
                         UPDATE product_processing_log
@@ -488,6 +507,10 @@ class ProcessingWorker:
                                 processed_at = CURRENT_TIMESTAMP
                             WHERE id = %s
                         """, (row['id'],))
+                    self.logger.info(
+                        f"[Refresh #{job_id}] [Scrape {scrape_index}/"
+                        f"{len(scrape_rows)}] Completed SKU {row['sku']}"
+                    )
                 else:
                     error_message = (
                         "Scraped ingredients could not be saved"
@@ -503,6 +526,11 @@ class ProcessingWorker:
                                 processed_at = CURRENT_TIMESTAMP
                             WHERE id = %s
                         """, (error_message, row['id']))
+                    self.logger.error(
+                        f"[Refresh #{job_id}] [Scrape {scrape_index}/"
+                        f"{len(scrape_rows)}] Failed SKU {row['sku']}: "
+                        f"{error_message}"
+                    )
                 conn.commit()
 
             if coordinator:
@@ -526,8 +554,16 @@ class ProcessingWorker:
                 validation_rows = cur.fetchall()
             conn.commit()
 
-            for row in validation_rows:
+            self.logger.info(
+                f"[Refresh #{job_id}] VALIDATING phase: "
+                f"{len(validation_rows)} successfully scraped products"
+            )
+            for validation_index, row in enumerate(validation_rows, start=1):
                 self._ensure_refresh_job_ownership(conn, job_id)
+                self.logger.info(
+                    f"[Refresh #{job_id}] [Validate {validation_index}/"
+                    f"{len(validation_rows)}] Starting SKU {row['sku']}"
+                )
                 with conn.cursor() as cur:
                     cur.execute("""
                         UPDATE product_processing_log
@@ -551,6 +587,10 @@ class ProcessingWorker:
                             WHERE id = %s
                         """, (row['id'],))
                     conn.commit()
+                    self.logger.info(
+                        f"[Refresh #{job_id}] [Validate {validation_index}/"
+                        f"{len(validation_rows)}] Completed SKU {row['sku']}"
+                    )
                 except Exception as exc:
                     conn.rollback()
                     with conn.cursor() as cur:
@@ -562,6 +602,10 @@ class ProcessingWorker:
                             WHERE id = %s
                         """, (f"Validation failed: {exc}", row['id']))
                     conn.commit()
+                    self.logger.error(
+                        f"[Refresh #{job_id}] [Validate {validation_index}/"
+                        f"{len(validation_rows)}] Failed SKU {row['sku']}: {exc}"
+                    )
 
             with conn.cursor() as cur:
                 cur.execute("""
@@ -604,6 +648,11 @@ class ProcessingWorker:
                 if cur.rowcount != 1:
                     raise RuntimeError("Refresh job ownership was lost before completion")
             conn.commit()
+            self.logger.info(
+                f"[Refresh #{job_id}] COMPLETED: "
+                f"{totals['completed']} successful, {totals['failed']} failed, "
+                f"{finished}/{total_products} finished"
+            )
             self.log_event(
                 job_id,
                 'job_completed',

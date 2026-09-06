@@ -12,11 +12,47 @@ from nutrition_validator import NutritionValidator, enrich_mapped_ingredients
 
 JOB_TYPE = "suspicious_refresh"
 ACTIVE_STATUSES = ("queued", "in_progress")
+REQUIRED_PRODUCT_STATUSES = {
+    "pending",
+    "processing",
+    "scraped",
+    "validating",
+    "completed",
+    "failed",
+    "skipped",
+}
 
 
 def is_active_refresh_job(job: dict[str, Any] | None) -> bool:
     """Return an explicit boolean suitable for Streamlit widget properties."""
     return bool(job and job.get("status") in ACTIVE_STATUSES)
+
+
+def verify_refresh_schema(connection) -> None:
+    """Fail before scraping if the database lacks refresh status support."""
+    with connection.cursor(cursor_factory=RealDictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT string_agg(pg_get_constraintdef(oid), ' ') AS definition
+            FROM pg_constraint
+            WHERE conrelid = 'product_processing_log'::regclass
+              AND contype = 'c'
+            """
+        )
+        row = cursor.fetchone()
+    definition = (row.get("definition") if row else None) or ""
+    if not definition:
+        return
+    missing = sorted(
+        status
+        for status in REQUIRED_PRODUCT_STATUSES
+        if f"'{status}'" not in definition
+    )
+    if missing:
+        raise RuntimeError(
+            "Database migration 007 is required; unsupported product statuses: "
+            + ", ".join(missing)
+        )
 
 
 def queue_suspicious_refresh(connection, requested_by: str = "checks_ui") -> tuple[int, int]:
