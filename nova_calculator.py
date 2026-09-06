@@ -19,6 +19,8 @@ Rules:
 """
 import logging
 
+from psycopg2.extras import RealDictCursor
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,14 +39,14 @@ def assign_nova_score(conn, product_id: int, sku: str) -> dict:
     dict with keys: nova_score, nova_source, skipped (bool), reason (str)
     """
     try:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             # --- Guard: never overwrite a manual override ---
             cur.execute(
                 "SELECT nova_source FROM products WHERE product_id = %s",
                 (product_id,)
             )
             row = cur.fetchone()
-            if row and row[0] == 'manual_override':
+            if row and row["nova_source"] == 'manual_override':
                 return {
                     'nova_score': None,
                     'nova_source': 'manual_override',
@@ -55,14 +57,15 @@ def assign_nova_score(conn, product_id: int, sku: str) -> dict:
             # --- Pass 1: additive override ---
             cur.execute(
                 """
-                SELECT COUNT(*) FROM ingredient_product_mapping ipm
+                SELECT COUNT(*) AS bad_count
+                FROM ingredient_product_mapping ipm
                 JOIN ingredient_analysis ia ON ia.id = ipm.ingredient_id
                 WHERE ipm.product_sku = %s
                   AND ia.suspicion_level IN ('avoid', 'limit')
                 """,
                 (sku,)
             )
-            bad_count = cur.fetchone()[0]
+            bad_count = cur.fetchone()["bad_count"]
 
             if bad_count > 0:
                 nova_score = 4
@@ -79,7 +82,7 @@ def assign_nova_score(conn, product_id: int, sku: str) -> dict:
                     (product_id,)
                 )
                 cat_row = cur.fetchone()
-                nova_score = cat_row[0] if cat_row else None
+                nova_score = cat_row["nova_score"] if cat_row else None
                 nova_source = 'category_inherited'
 
             cur.execute(
@@ -104,13 +107,25 @@ def assign_nova_score(conn, product_id: int, sku: str) -> dict:
             }
 
     except Exception as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            logger.exception(
+                "NOVA rollback failed for product_id=%s sku=%s",
+                product_id,
+                sku,
+            )
         logger.warning(
-            "NOVA assignment failed for product_id=%s sku=%s: %s",
-            product_id, sku, exc
+            "NOVA assignment failed for product_id=%s sku=%s: %s: %s",
+            product_id,
+            sku,
+            type(exc).__name__,
+            exc,
+            exc_info=True,
         )
         return {
             'nova_score': None,
             'nova_source': None,
             'skipped': True,
-            'reason': str(exc),
+            'reason': f"{type(exc).__name__}: {exc}",
         }
