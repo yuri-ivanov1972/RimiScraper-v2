@@ -1,0 +1,121 @@
+
+2026-09-06 15:00:53.19
+7b51f8c0
+User
+2026-09-06 12:00:53,191 - worker - INFO - ========================================================================
+
+
+2026-09-06 15:00:53.19
+7b51f8c0
+User
+2026-09-06 12:00:53,191 - worker - INFO - [Refresh #20473] Starting suspicious-product refresh for 898 products
+
+2026-09-06 15:00:53.19
+7b51f8c0
+User
+2026-09-06 12:00:53,191 - worker - INFO - ========================================================================
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+File "/home/runner/workspace/worker.py", line 432, in _process_suspicious_refresh_job
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+verify_refresh_schema(conn)
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+2026-09-06 12:00:53,712 - worker - ERROR - Suspicious refresh job #20473 failed: Database migration 007 is required; unsupported product statuses: scraped, validating
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+RuntimeError: Database migration 007 is required; unsupported product statuses: scraped, validating
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+Traceback (most recent call last):
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+raise RuntimeError(
+
+2026-09-06 15:00:53.75
+7b51f8c0
+User
+File "/home/runner/workspace/suspicious_refresh.py", line 52, in verify_refresh_schema
+
+2026-09-06 15:00:54.56
+7b51f8c0
+User
+2026-09-06 12:00:54,563 - worker - INFO - Acquired job #20473: None (priority: 7)
+
+2026-09-06 15:00:54.56
+7b51f8c0
+User
+2026-09-06 12:00:54,564 - worker - INFO - ========================================================================
+
+2026-09-06 15:00:54.56
+7b51f8c0
+User
+2026-09-06 12:00:54,564 - worker - INFO - ========================================================================
+
+2026-09-06 15:00:54.56
+7b51f8c0
+User
+2026-09-06 12:00:54,564 - worker - INFO - [Refresh #20473] Starting suspicious-product refresh for 898 products
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+verify_refresh_schema(conn)
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+Traceback (most recent call last):
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+File "/home/runner/workspace/suspicious_refresh.py", line 52, in verify_refresh_schema
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+2026-09-06 12:00:55,607 - worker - ERROR - Suspicious refresh job #20473 failed: Database migration 007 is required; unsupported product statuses: scraped, validating
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+File "/home/runner/workspace/worker.py", line 432, in _process_suspicious_refresh_job
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+File "/home/runner/workspace/worker.py", line 432, in _process_suspicious_refresh_job
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+2026-09-06 12:00:55,607 - worker - ERROR - Suspicious refresh job #20473 failed: Database migration 007 is required; unsupported product statuses: scraped, validating
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+File "/home/runner/workspace/suspicious_refresh.py", line 52, in verify_refresh_schema
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+Traceback (most recent call last):
+
+2026-09-06 15:00:55.60
+7b51f8c0
+User
+verify_refresh_schema(conn)
