@@ -24,6 +24,8 @@ import time
 import logging
 import json
 import resource
+import threading
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Optional, List
 import psycopg2
@@ -176,6 +178,21 @@ class ProcessingWorker:
                     current_job_id = %s
                 WHERE worker_id = %s
             """, (status, job_id, self.worker_id))
+
+            if job_id is not None:
+                cur.execute("""
+                    UPDATE category_processing_jobs
+                    SET last_heartbeat = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                      AND status = 'in_progress'
+                      AND current_worker_id = %s
+                """, (job_id, self.worker_id))
+                if cur.rowcount != 1:
+                    self.logger.warning(
+                        "Worker %s no longer owns job #%s; lease was not renewed",
+                        self.worker_id,
+                        job_id,
+                    )
             
             conn.commit()
             
@@ -191,6 +208,32 @@ class ProcessingWorker:
         finally:
             if conn:
                 conn.close()
+
+    @contextmanager
+    def _maintain_job_lease(self, job_id: int):
+        """Renew an owned job lease while blocking product work is in progress."""
+        stop_event = threading.Event()
+
+        def renew_lease():
+            while not stop_event.wait(self.heartbeat_interval):
+                self.update_heartbeat(
+                    'processing',
+                    job_id,
+                    force=True,
+                )
+
+        self.update_heartbeat('processing', job_id, force=True)
+        lease_thread = threading.Thread(
+            target=renew_lease,
+            name=f"job-lease-{job_id}",
+            daemon=True,
+        )
+        lease_thread.start()
+        try:
+            yield
+        finally:
+            stop_event.set()
+            lease_thread.join(timeout=self.heartbeat_interval + 1)
     
     def log_event(self, job_id: int, event_type: str, message: str, metadata: dict = None):
         """Log job event to database"""
@@ -293,6 +336,11 @@ class ProcessingWorker:
     
     def process_job(self, job: dict):
         """Process a single job"""
+        with self._maintain_job_lease(job['id']):
+            return self._process_job(job)
+
+    def _process_job(self, job: dict):
+        """Process a single job while its ownership lease is maintained."""
         if job.get('job_type') == 'suspicious_refresh':
             self._process_suspicious_refresh_job(job)
             return

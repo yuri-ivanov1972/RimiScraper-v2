@@ -2,6 +2,7 @@ import unittest
 import inspect
 import os
 import re
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -537,6 +538,7 @@ class SuspiciousRefreshTests(unittest.TestCase):
         worker = ProcessingWorker.__new__(ProcessingWorker)
         received = []
         worker._process_suspicious_refresh_job = received.append
+        worker._maintain_job_lease = lambda job_id: nullcontext()
 
         worker.process_job({"id": 42, "job_type": "suspicious_refresh"})
 
