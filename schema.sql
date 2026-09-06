@@ -213,7 +213,7 @@ CREATE TABLE IF NOT EXISTS ingredient_product_mapping (
 -- -----------------------------------------------------------
 CREATE TABLE IF NOT EXISTS category_processing_jobs (
     id                  SERIAL PRIMARY KEY,
-    category_code       VARCHAR(50)  NOT NULL,
+    category_code       VARCHAR(50),
     category_id         INTEGER,
     total_products      INTEGER      NOT NULL,
     processed_count     INTEGER               DEFAULT 0,
@@ -231,7 +231,11 @@ CREATE TABLE IF NOT EXISTS category_processing_jobs (
     log_path            TEXT,
     notes               TEXT,
     requested_by        VARCHAR(100)          DEFAULT 'streamlit_ui',
-    update_mode         VARCHAR(20)  NOT NULL DEFAULT 'full'
+    update_mode         VARCHAR(20)  NOT NULL DEFAULT 'full',
+    job_type            VARCHAR(30)  NOT NULL DEFAULT 'category',
+    phase               VARCHAR(20)  NOT NULL DEFAULT 'queued',
+    validation_completed_count INTEGER NOT NULL DEFAULT 0,
+    validation_failed_count INTEGER NOT NULL DEFAULT 0
 );
 
 
@@ -277,7 +281,10 @@ CREATE TABLE IF NOT EXISTS product_processing_log (
     sku             VARCHAR(50)  NOT NULL,
     status          VARCHAR(20)  NOT NULL DEFAULT 'pending',
     error_message   TEXT,
-    processed_at    TIMESTAMP             DEFAULT CURRENT_TIMESTAMP
+    processed_at    TIMESTAMP             DEFAULT CURRENT_TIMESTAMP,
+    product_id      INTEGER REFERENCES products (product_id),
+    scrape_status   VARCHAR(20) NOT NULL DEFAULT 'pending',
+    validation_status VARCHAR(20) NOT NULL DEFAULT 'pending'
 );
 
 
@@ -441,6 +448,12 @@ CREATE INDEX IF NOT EXISTS idx_job_events_type ON job_events (event_type, create
 CREATE INDEX IF NOT EXISTS idx_product_log_job    ON product_processing_log (job_id);
 CREATE INDEX IF NOT EXISTS idx_product_log_sku    ON product_processing_log (sku);
 CREATE INDEX IF NOT EXISTS idx_product_log_status ON product_processing_log (job_id, status);
+CREATE INDEX IF NOT EXISTS idx_product_log_refresh_status
+    ON product_processing_log (job_id, scrape_status, validation_status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_active_suspicious_refresh
+    ON category_processing_jobs (job_type)
+    WHERE job_type = 'suspicious_refresh'
+      AND status IN ('queued', 'in_progress');
 
 -- update_statistics
 CREATE INDEX IF NOT EXISTS idx_update_statistics_job_id        ON update_statistics (job_id);

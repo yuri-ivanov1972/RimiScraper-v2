@@ -1,0 +1,238 @@
+import unittest
+
+from enhanced_update_coordinator import EnhancedUpdateCoordinator
+from suspicious_refresh import queue_suspicious_refresh, validate_product
+from worker import ProcessingWorker
+
+
+class QueueCursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.rows = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        if "pg_advisory_xact_lock" in normalized:
+            self.rows = [{"pg_advisory_xact_lock": None}]
+        elif (
+            "FROM category_processing_jobs" in normalized
+            and "status IN ('queued', 'in_progress')" in normalized
+        ):
+            self.rows = (
+                [{"id": self.connection.active_job_id}]
+                if self.connection.active_job_id
+                else []
+            )
+        elif "FROM nutrition_validation nv" in normalized:
+            self.rows = list(self.connection.suspicious_products)
+        elif normalized.startswith("INSERT INTO category_processing_jobs"):
+            self.rows = [{"id": 42}]
+        elif normalized.startswith("INSERT INTO job_events"):
+            self.connection.event_written = True
+            self.rows = []
+        else:
+            raise AssertionError(f"Unexpected query: {normalized}")
+
+    def executemany(self, query, params):
+        self.connection.product_rows.extend(params)
+
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+    def fetchall(self):
+        return list(self.rows)
+
+
+class QueueConnection:
+    def __init__(self, active_job_id=None):
+        self.active_job_id = active_job_id
+        self.suspicious_products = [
+            {"product_id": 7, "sku": "SKU-7"},
+            {"product_id": 9, "sku": "SKU-9"},
+        ]
+        self.product_rows = []
+        self.event_written = False
+        self.commits = 0
+
+    def cursor(self, cursor_factory=None):
+        return QueueCursor(self)
+
+    def commit(self):
+        self.commits += 1
+
+
+class ValidationCursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.rows = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, query, params=None):
+        normalized = " ".join(query.split())
+        if "FROM products p LEFT JOIN nutritionfacts" in normalized:
+            self.rows = [dict(self.connection.product)]
+        elif "FROM ingredient_product_mapping" in normalized:
+            self.rows = [{"ingredient": "cukurs", "clean_name": None}]
+        elif normalized.startswith("INSERT INTO nutrition_validation"):
+            self.connection.upsert_params = params
+            self.rows = []
+        else:
+            raise AssertionError(f"Unexpected query: {normalized}")
+
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+    def fetchall(self):
+        return list(self.rows)
+
+
+class ValidationConnection:
+    def __init__(self):
+        self.product = {
+            "product_id": 7,
+            "sku": "SKU-7",
+            "ingredients_text": "cukurs",
+            "energy_kcal": 100,
+            "energy_kj": 418,
+            "fat_total": 0,
+            "fat_saturated": 0,
+            "carbs_total": 20,
+            "carbs_sugars": 0,
+            "protein": 0,
+            "salt": 0,
+            "fiber": 0,
+        }
+        self.upsert_params = None
+        self.commits = 0
+
+    def cursor(self, cursor_factory=None):
+        return ValidationCursor(self)
+
+    def commit(self):
+        self.commits += 1
+
+
+class FakeWebClient:
+    def get_product_data(self, sku):
+        return {
+            "soup": object(),
+            "url": f"https://example.test/{sku}",
+            "name": "Test product 100 g",
+            "price": "1.00",
+            "is_available": True,
+            "photos": [],
+        }
+
+    def extract_nutrition_data(self, soup, url):
+        return {
+            "category_code": "SH-1",
+            "category_path_full": "Test",
+            "has_nutrition": True,
+            "ingredients": "cukurs",
+            "carbs_sugars": 10,
+        }
+
+
+class FakeDatabaseUpdater:
+    def __init__(self):
+        self.force_overwrite = None
+        self.preserve_manual_nutrition = None
+
+    def get_product_by_sku(self, sku):
+        return {"product_id": 7, "sku": sku, "category_id": 2}
+
+    def force_update_product_data(
+        self,
+        sku,
+        product_data,
+        force_overwrite=True,
+        is_new_product=False,
+        preserve_manual_nutrition=False,
+    ):
+        self.force_overwrite = force_overwrite
+        self.preserve_manual_nutrition = preserve_manual_nutrition
+        return True
+
+
+class SuspiciousRefreshTests(unittest.TestCase):
+    def test_queue_snapshots_all_suspicious_products(self):
+        connection = QueueConnection()
+        job_id, count = queue_suspicious_refresh(connection)
+
+        self.assertEqual((job_id, count), (42, 2))
+        self.assertEqual(
+            connection.product_rows,
+            [(42, "SKU-7", 7), (42, "SKU-9", 9)],
+        )
+        self.assertTrue(connection.event_written)
+        self.assertEqual(connection.commits, 1)
+
+    def test_queue_rejects_duplicate_active_refresh(self):
+        with self.assertRaisesRegex(ValueError, "already active"):
+            queue_suspicious_refresh(QueueConnection(active_job_id=41))
+
+    def test_validation_replaces_report_only_after_success(self):
+        connection = ValidationConnection()
+        result = validate_product(connection, 7)
+
+        self.assertEqual(result["suspicion_level"], "medium")
+        self.assertEqual(connection.upsert_params[0], 7)
+        self.assertEqual(connection.commits, 1)
+
+    def test_validation_failure_does_not_replace_previous_report(self):
+        class FailingValidator:
+            def validate(self, ingredients, product):
+                raise ValueError("bad validation input")
+
+        connection = ValidationConnection()
+        with self.assertRaisesRegex(ValueError, "bad validation input"):
+            validate_product(connection, 7, validator=FailingValidator())
+
+        self.assertIsNone(connection.upsert_params)
+        self.assertEqual(connection.commits, 0)
+
+    def test_checks_refresh_preserves_manual_nutrition(self):
+        coordinator = EnhancedUpdateCoordinator.__new__(EnhancedUpdateCoordinator)
+        coordinator.status_callback = lambda message: None
+        coordinator.web_client = FakeWebClient()
+        coordinator.db_updater = FakeDatabaseUpdater()
+        coordinator._get_category_id = lambda code: 2
+        coordinator._check_data_corruption = lambda product: False
+        coordinator._parse_quantity = lambda name: (100, "g")
+
+        result = coordinator.process_single_product_with_auto_category(
+            "SKU-7",
+            force_update=True,
+            preserve_manual_nutrition=True,
+        )
+
+        self.assertTrue(result.success)
+        self.assertTrue(coordinator.db_updater.force_overwrite)
+        self.assertTrue(coordinator.db_updater.preserve_manual_nutrition)
+
+    def test_worker_dispatches_dedicated_refresh_job(self):
+        worker = ProcessingWorker.__new__(ProcessingWorker)
+        received = []
+        worker._process_suspicious_refresh_job = received.append
+
+        worker.process_job({"id": 42, "job_type": "suspicious_refresh"})
+
+        self.assertEqual(
+            received,
+            [{"id": 42, "job_type": "suspicious_refresh"}],
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

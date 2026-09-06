@@ -1959,6 +1959,109 @@ def section_change_report():
         st.code(traceback.format_exc())
 
 
+def _render_suspicious_refresh_controls(db, suspicious_count):
+    """Render durable controls and progress for the Checks refresh job."""
+    from suspicious_refresh import (
+        get_latest_refresh_status,
+        get_refresh_failures,
+        queue_suspicious_refresh,
+    )
+
+    st.subheader("Refresh suspicious products")
+    st.caption(
+        "Full-scrape every currently suspicious product from Rimi, preserve "
+        "manually edited nutrition, then recalculate this report."
+    )
+
+    try:
+        latest_job = get_latest_refresh_status(db.connection)
+    except Exception as exc:
+        db.connection.rollback()
+        st.warning(f"Refresh jobs are not available yet: {exc}")
+        return
+
+    active_job = (
+        latest_job
+        and latest_job["status"] in ("queued", "in_progress")
+    )
+    action_col, refresh_col = st.columns([2, 1])
+    with action_col:
+        queue_clicked = st.button(
+            f"🔄 Full refresh {suspicious_count} suspicious products",
+            type="primary",
+            disabled=not suspicious_count or active_job,
+            help=(
+                "Creates a background job. Failed scrapes keep their previous "
+                "Checks result."
+            ),
+        )
+    with refresh_col:
+        if st.button("↻ Refresh job status", use_container_width=True):
+            st.rerun()
+
+    if queue_clicked:
+        try:
+            job_id, product_count = queue_suspicious_refresh(db.connection)
+            st.success(
+                f"Job #{job_id} queued with {product_count} suspicious products."
+            )
+            st.rerun()
+        except Exception as exc:
+            db.connection.rollback()
+            st.error(f"Could not queue refresh: {exc}")
+
+    if latest_job:
+        phase_labels = {
+            "queued": "Queued",
+            "scraping": "Scraping",
+            "validating": "Validating",
+            "completed": "Completed",
+            "failed": "Failed",
+        }
+        st.caption(
+            f"Latest job #{latest_job['id']} · "
+            f"{phase_labels.get(latest_job['phase'], latest_job['phase'].title())}"
+        )
+        progress_columns = st.columns(5)
+        progress_columns[0].metric("Queued", latest_job["queued"])
+        progress_columns[1].metric("Scraping", latest_job["scraping"])
+        progress_columns[2].metric("Validating", latest_job["validating"])
+        progress_columns[3].metric("Completed", latest_job["completed"])
+        progress_columns[4].metric("Failed", latest_job["failed"])
+        if active_job:
+            finished = latest_job["completed"] + latest_job["failed"]
+            total = max(latest_job["total_products"], 1)
+            st.progress(
+                min(finished / total, 1.0),
+                text=f"{finished} of {latest_job['total_products']} finished",
+            )
+        elif latest_job["completed_at"]:
+            st.caption(
+                "Finished "
+                f"{latest_job['completed_at'].strftime('%Y-%m-%d %H:%M')}"
+            )
+        if latest_job["failed"]:
+            try:
+                failures = get_refresh_failures(db.connection, latest_job["id"])
+            except Exception as exc:
+                db.connection.rollback()
+                st.warning(f"Could not load refresh errors: {exc}")
+                failures = []
+            if failures:
+                with st.expander(
+                    f"View failed products ({latest_job['failed']})"
+                ):
+                    for failure in failures:
+                        st.error(
+                            f"SKU {failure['sku']}: "
+                            f"{failure['error_message'] or 'Unknown error'}"
+                        )
+                    if latest_job["failed"] > len(failures):
+                        st.caption(
+                            f"Showing the latest {len(failures)} failures."
+                        )
+
+
 def section_nutrition_validation_report():
     """Section: Rule-based ingredient/nutrition consistency report."""
     import json
@@ -1967,8 +2070,8 @@ def section_nutrition_validation_report():
     st.header("🚩 Nutrition Consistency Checks")
     st.caption(
         "Products are ranked by evidence that their saved nutrition values "
-        "conflict with their parsed ingredients. Source product and nutrition "
-        "records are read-only here."
+        "conflict with their parsed ingredients. The refresh action below can "
+        "update source data through a background job."
     )
 
     db = ProductViewDatabase()
@@ -2012,6 +2115,11 @@ def section_nutrition_validation_report():
         st.metric("🟡 Low", summary["low_count"])
     with metric_columns[4]:
         st.metric("✅ No findings", summary["none_count"])
+
+    suspicious_count = (
+        summary["low_count"] + summary["medium_count"] + summary["high_count"]
+    )
+    _render_suspicious_refresh_controls(db, suspicious_count)
 
     if not summary["products_checked"]:
         st.info("No validation results found. Run the development backfill first.")

@@ -102,7 +102,14 @@ class EnhancedDatabaseUpdater:
                             pass
                     raise Exception(f"Query execution failed: {str(e)}")
     
-    def force_update_product_data(self, sku: str, product_data: Dict, force_overwrite: bool = True, is_new_product: bool = False) -> bool:
+    def force_update_product_data(
+        self,
+        sku: str,
+        product_data: Dict,
+        force_overwrite: bool = True,
+        is_new_product: bool = False,
+        preserve_manual_nutrition: bool = False,
+    ) -> bool:
         """
         Force update product data, overwriting existing corrupted/NULL values
         
@@ -181,7 +188,16 @@ class EnhancedDatabaseUpdater:
             
             # Force update nutrition data if provided
             if 'nutrition_data' in product_data and product_data['nutrition_data']:
-                self.force_update_nutrition_data(product_id, product_data['nutrition_data'], force_overwrite)
+                nutrition_saved = self.force_update_nutrition_data(
+                    product_id,
+                    product_data['nutrition_data'],
+                    force_overwrite,
+                    preserve_manual_edits=preserve_manual_nutrition,
+                )
+                if not nutrition_saved:
+                    raise ValueError(
+                        f"Nutrition update failed for product {product_id}"
+                    )
             
             # Force update price if provided (skip for new products to prevent dual entries)
             if 'price' in product_data and not is_new_product:
@@ -287,7 +303,13 @@ class EnhancedDatabaseUpdater:
             self.status_callback(f"Brand/producer save failed: {e}")
             return False
     
-    def force_update_nutrition_data(self, product_id: int, nutrition_data: Dict, force_overwrite: bool = True) -> bool:
+    def force_update_nutrition_data(
+        self,
+        product_id: int,
+        nutrition_data: Dict,
+        force_overwrite: bool = True,
+        preserve_manual_edits: bool = False,
+    ) -> bool:
         """
         Force update nutrition data, overwriting NULL or corrupted values
         
@@ -312,7 +334,7 @@ class EnhancedDatabaseUpdater:
             if existing_nutrition:
                 existing_record = existing_nutrition[0]
                 
-                if existing_record.get('nutrition_manual_edit') and not force_overwrite:
+                if existing_record.get('nutrition_manual_edit') and preserve_manual_edits:
                     self.status_callback("Skipping nutrition update - product marked as manually edited")
                     return True
                 

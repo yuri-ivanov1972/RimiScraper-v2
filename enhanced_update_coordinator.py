@@ -69,7 +69,13 @@ class EnhancedUpdateCoordinator:
                     self.web_client = None
                     self.db_updater = None
     
-    def process_single_product_with_auto_category(self, sku: str, force_update: bool = False, fallback_category_code: Optional[str] = None) -> ProcessingResult:
+    def process_single_product_with_auto_category(
+        self,
+        sku: str,
+        force_update: bool = False,
+        fallback_category_code: Optional[str] = None,
+        preserve_manual_nutrition: bool = False,
+    ) -> ProcessingResult:
         """
         Process single product with automatic category extraction from product page
         
@@ -171,7 +177,12 @@ class EnhancedUpdateCoordinator:
             self.status_callback(f"🔄 COORDINATOR: Step 3: Processing with category {category_code}")
             self.status_callback(f"🔄 COORDINATOR: Calling process_single_product_enhanced...")
             
-            enhanced_result = self.process_single_product_enhanced(sku, category_code, force_update)
+            enhanced_result = self.process_single_product_enhanced(
+                sku,
+                category_code,
+                force_update,
+                preserve_manual_nutrition=preserve_manual_nutrition,
+            )
             self.status_callback(f"🔍 COORDINATOR: Enhanced processing result: success={enhanced_result.success}, operation={enhanced_result.operation}")
             if enhanced_result.errors:
                 self.status_callback(f"🔍 COORDINATOR: Enhanced processing errors: {enhanced_result.errors}")
@@ -184,7 +195,13 @@ class EnhancedUpdateCoordinator:
             self.status_callback(error_msg)
             return result
 
-    def process_single_product_enhanced(self, sku: str, category_code: str, force_update: bool = False) -> ProcessingResult:
+    def process_single_product_enhanced(
+        self,
+        sku: str,
+        category_code: str,
+        force_update: bool = False,
+        preserve_manual_nutrition: bool = False,
+    ) -> ProcessingResult:
         """
         Process a single product with enhanced retry logic and data corruption handling
         
@@ -301,7 +318,11 @@ class EnhancedUpdateCoordinator:
                 
                 # Pass information about whether this is a new product to prevent dual price history
                 success = self.db_updater.force_update_product_data(
-                    sku, update_data, force_overwrite=True, is_new_product=False
+                    sku,
+                    update_data,
+                    force_overwrite=True,
+                    is_new_product=False,
+                    preserve_manual_nutrition=preserve_manual_nutrition,
                 )
                 
                 if success:

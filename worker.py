@@ -231,7 +231,7 @@ class ProcessingWorker:
             cur.execute("""
                 SELECT id, category_code, category_id, total_products, processed_count,
                        priority, scheduled_for, retry_count, max_retries, current_worker_id,
-                       update_mode
+                       update_mode, job_type
                 FROM category_processing_jobs
                 WHERE (
                     (status = 'queued') OR
@@ -293,6 +293,10 @@ class ProcessingWorker:
     
     def process_job(self, job: dict):
         """Process a single job"""
+        if job.get('job_type') == 'suspicious_refresh':
+            self._process_suspicious_refresh_job(job)
+            return
+
         job_id = job['id']
         category_code = job['category_code']
         update_mode = job.get('update_mode', 'full')  # Default to 'full' for backward compatibility
@@ -400,6 +404,268 @@ class ProcessingWorker:
         
         finally:
             self.current_job_id = None
+
+    def _process_suspicious_refresh_job(self, job: dict):
+        """Full-scrape and then revalidate a snapshot of suspicious products."""
+        from enhanced_update_coordinator import EnhancedUpdateCoordinator
+        from suspicious_refresh import validate_product
+
+        job_id = job['id']
+        self.current_job_id = job_id
+        coordinator = None
+        conn = None
+        self.log_event(
+            job_id,
+            'job_started',
+            f"Worker {self.worker_id} started suspicious-product refresh",
+        )
+
+        try:
+            conn = self._get_db_connection()
+            with conn.cursor() as cur:
+                # Resume interrupted individual work at the beginning of its phase.
+                cur.execute("""
+                    UPDATE product_processing_log
+                    SET status = 'pending', scrape_status = 'pending',
+                        error_message = 'Reset interrupted scrape'
+                    WHERE job_id = %s AND status = 'processing'
+                """, (job_id,))
+                cur.execute("""
+                    UPDATE product_processing_log
+                    SET status = 'scraped', validation_status = 'pending',
+                        error_message = 'Reset interrupted validation'
+                    WHERE job_id = %s AND status = 'validating'
+                """, (job_id,))
+                cur.execute("""
+                    UPDATE category_processing_jobs
+                    SET phase = 'scraping', last_updated = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (job_id,))
+            conn.commit()
+
+            coordinator = EnhancedUpdateCoordinator(
+                lambda message: self.logger.info(message)
+            )
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT id, sku
+                    FROM product_processing_log
+                    WHERE job_id = %s AND scrape_status = 'pending'
+                    ORDER BY id
+                """, (job_id,))
+                scrape_rows = cur.fetchall()
+
+            for row in scrape_rows:
+                self._ensure_refresh_job_ownership(conn, job_id)
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE product_processing_log
+                        SET status = 'processing', scrape_status = 'processing',
+                            error_message = NULL, processed_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (row['id'],))
+                conn.commit()
+                self.update_heartbeat('processing', job_id)
+
+                result = coordinator.process_single_product_with_auto_category(
+                    row['sku'],
+                    force_update=True,
+                    preserve_manual_nutrition=True,
+                )
+                self._ensure_refresh_job_ownership(conn, job_id)
+                ingredient_failure = (
+                    result.success
+                    and result.changes.get('ingredients_updated')
+                    and not result.changes.get('ingredients_saved')
+                )
+                if result.success and not ingredient_failure:
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            UPDATE product_processing_log
+                            SET status = 'scraped', scrape_status = 'completed',
+                                validation_status = 'pending',
+                                error_message = NULL,
+                                processed_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                        """, (row['id'],))
+                else:
+                    error_message = (
+                        "Scraped ingredients could not be saved"
+                        if ingredient_failure
+                        else "; ".join(result.errors) or "Full scrape failed"
+                    )
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            UPDATE product_processing_log
+                            SET status = 'failed', scrape_status = 'failed',
+                                validation_status = 'skipped',
+                                error_message = %s,
+                                processed_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                        """, (error_message, row['id']))
+                conn.commit()
+
+            if coordinator:
+                coordinator.close()
+                coordinator = None
+
+            with conn.cursor() as cur:
+                cur.execute("""
+                    UPDATE category_processing_jobs
+                    SET phase = 'validating', last_updated = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                """, (job_id,))
+                cur.execute("""
+                    SELECT id, product_id, sku
+                    FROM product_processing_log
+                    WHERE job_id = %s
+                      AND scrape_status = 'completed'
+                      AND validation_status = 'pending'
+                    ORDER BY id
+                """, (job_id,))
+                validation_rows = cur.fetchall()
+            conn.commit()
+
+            for row in validation_rows:
+                self._ensure_refresh_job_ownership(conn, job_id)
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE product_processing_log
+                        SET status = 'validating', validation_status = 'processing',
+                            processed_at = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (row['id'],))
+                conn.commit()
+                self.update_heartbeat('processing', job_id)
+
+                try:
+                    validate_product(conn, row['product_id'])
+                    self._ensure_refresh_job_ownership(conn, job_id)
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            UPDATE product_processing_log
+                            SET status = 'completed',
+                                validation_status = 'completed',
+                                error_message = NULL,
+                                processed_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                        """, (row['id'],))
+                    conn.commit()
+                except Exception as exc:
+                    conn.rollback()
+                    with conn.cursor() as cur:
+                        cur.execute("""
+                            UPDATE product_processing_log
+                            SET status = 'failed', validation_status = 'failed',
+                                error_message = %s,
+                                processed_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                        """, (f"Validation failed: {exc}", row['id']))
+                    conn.commit()
+
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+                        COUNT(*) FILTER (WHERE status = 'failed') AS failed,
+                        COUNT(*) FILTER (
+                            WHERE validation_status = 'completed'
+                        ) AS validated,
+                        COUNT(*) FILTER (
+                            WHERE validation_status = 'failed'
+                        ) AS validation_failed
+                    FROM product_processing_log
+                    WHERE job_id = %s
+                """, (job_id,))
+                totals = cur.fetchone()
+                finished = totals['completed'] + totals['failed']
+                if finished != job['total_products']:
+                    raise RuntimeError(
+                        "Refresh cannot complete with non-terminal products: "
+                        f"{finished}/{job['total_products']} finished"
+                    )
+                cur.execute("""
+                    UPDATE category_processing_jobs
+                    SET status = 'completed', phase = 'completed',
+                        processed_count = %s,
+                        validation_completed_count = %s,
+                        validation_failed_count = %s,
+                        completed_at = CURRENT_TIMESTAMP,
+                        last_updated = CURRENT_TIMESTAMP,
+                        current_worker_id = NULL
+                    WHERE id = %s AND current_worker_id = %s
+                """, (
+                    finished,
+                    totals['validated'],
+                    totals['validation_failed'],
+                    job_id,
+                    self.worker_id,
+                ))
+                if cur.rowcount != 1:
+                    raise RuntimeError("Refresh job ownership was lost before completion")
+            conn.commit()
+            self.log_event(
+                job_id,
+                'job_completed',
+                (
+                    f"Suspicious refresh completed: {totals['completed']} "
+                    f"updated, {totals['failed']} failed"
+                ),
+                metadata=dict(totals),
+            )
+        except KeyboardInterrupt:
+            if conn:
+                conn.rollback()
+            raise
+        except Exception as exc:
+            if conn:
+                conn.rollback()
+            self.logger.error(
+                f"Suspicious refresh job #{job_id} failed: {exc}",
+                exc_info=True,
+            )
+            self.log_event(job_id, 'job_failed', f"Error: {exc}")
+            retry_conn = self._get_db_connection()
+            try:
+                with retry_conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE category_processing_jobs
+                        SET retry_count = retry_count + 1,
+                            status = CASE
+                                WHEN retry_count + 1 >= max_retries
+                                THEN 'failed' ELSE 'queued'
+                            END,
+                            phase = CASE
+                                WHEN retry_count + 1 >= max_retries
+                                THEN 'failed' ELSE phase
+                            END,
+                            current_worker_id = NULL,
+                            last_heartbeat = NULL,
+                            last_updated = CURRENT_TIMESTAMP
+                        WHERE id = %s AND current_worker_id = %s
+                    """, (job_id, self.worker_id))
+                retry_conn.commit()
+            finally:
+                retry_conn.close()
+        finally:
+            if coordinator:
+                coordinator.close()
+            if conn:
+                conn.close()
+            self.current_job_id = None
+
+    def _ensure_refresh_job_ownership(self, connection, job_id: int):
+        """Stop a stale worker before it records progress for a reassigned job."""
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT 1
+                FROM category_processing_jobs
+                WHERE id = %s
+                  AND status = 'in_progress'
+                  AND current_worker_id = %s
+            """, (job_id, self.worker_id))
+            if not cursor.fetchone():
+                raise RuntimeError(f"Worker no longer owns refresh job #{job_id}")
     
     def _record_update_statistics(self, job_id: int, category_code: str, results: dict):
         """
