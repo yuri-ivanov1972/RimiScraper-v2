@@ -379,6 +379,41 @@ class ProductViewDatabase:
                 product['price_date'] = None
             
             return product
+
+    def resolve_product_identifier(self, identifier: str) -> Optional[int]:
+        """
+        Resolve an exact product ID or SKU to the internal product ID.
+
+        Numeric identifiers preserve the existing behavior by checking
+        product_id first, then falling back to an exact SKU match.
+        """
+        self._ensure_connection()
+
+        normalized_identifier = identifier.strip()
+        if not normalized_identifier:
+            return None
+
+        with self.connection.cursor() as cursor:
+            try:
+                product_id = int(normalized_identifier)
+            except ValueError:
+                product_id = None
+
+            if product_id is not None:
+                cursor.execute(
+                    "SELECT product_id FROM products WHERE product_id = %s",
+                    (product_id,),
+                )
+                product = cursor.fetchone()
+                if product:
+                    return product['product_id']
+
+            cursor.execute(
+                "SELECT product_id FROM products WHERE sku = %s",
+                (normalized_identifier,),
+            )
+            product = cursor.fetchone()
+            return product['product_id'] if product else None
     
     def search_products(self, search_term: str, page: int = 1, page_size: int = 20) -> Tuple[List[Dict], int]:
         """

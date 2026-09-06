@@ -854,14 +854,18 @@ def section_product_view():
     
     with col_sidebar:
         st.subheader("🔍 Ātrā meklēšana")
-        product_id_input = st.text_input("Product ID", placeholder="Ievadiet produkta ID", label_visibility="collapsed")
-        if product_id_input:
-            try:
-                product_id = int(product_id_input.strip())
+        product_identifier_input = st.text_input(
+            "Produkta ID vai SKU",
+            placeholder="Ievadiet produkta ID vai SKU",
+            label_visibility="collapsed",
+        )
+        if product_identifier_input:
+            product_id = db.resolve_product_identifier(product_identifier_input)
+            if product_id is not None:
                 st.session_state.selected_product_id = product_id
                 st.rerun()
-            except ValueError:
-                st.error("Nederīgs ID formāts")
+            else:
+                st.error("Produkts ar šādu ID vai SKU nav atrasts")
         
         st.divider()
         
