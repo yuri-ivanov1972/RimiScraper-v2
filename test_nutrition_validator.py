@@ -63,17 +63,15 @@ class NutritionValidatorTests(unittest.TestCase):
         )
 
     def test_fat_or_oil_with_zero_total_fat(self):
-        self.assert_rule(
-            "fat_ingredient_present_but_fat_zero",
-            ["saulespuķu eļļa"],
-            fat_total=0,
+        self.assertEqual(
+            self.validate(["saulespuķu eļļa"], fat_total=0)["reasons"],
+            [],
         )
 
     def test_fat_rich_ingredient_with_zero_saturated_fat(self):
-        self.assert_rule(
-            "high_saturated_fat_ingredient_but_saturated_fat_zero",
-            ["kokosriekstu eļļa"],
-            fat_saturated=0,
+        self.assertEqual(
+            self.validate(["kokosriekstu eļļa"], fat_saturated=0)["reasons"],
+            [],
         )
 
     def test_sugar_with_zero_sugars(self):
@@ -93,19 +91,16 @@ class NutritionValidatorTests(unittest.TestCase):
         )
 
     def test_carbohydrate_ingredient_with_zero_carbohydrates(self):
-        self.assert_rule(
-            "carbohydrate_ingredient_present_but_carbohydrates_zero",
-            ["kviešu milti"],
-            carbs_total=0,
+        self.assertEqual(
+            self.validate(["kviešu milti"], carbs_total=0)["reasons"],
+            [],
         )
 
     def test_fruit_with_zero_sugars(self):
-        result = self.assert_rule(
-            "fruit_present_but_sugars_zero",
-            ["zemeņu biezenis"],
-            carbs_sugars=0,
+        self.assertEqual(
+            self.validate(["zemeņu biezenis"], carbs_sugars=0)["reasons"],
+            [],
         )
-        self.assertEqual(result["suspicion_level"], "low")
 
     def test_salt_with_zero_salt(self):
         self.assert_rule(
@@ -115,24 +110,21 @@ class NutritionValidatorTests(unittest.TestCase):
         )
 
     def test_salty_ingredient_with_low_salt(self):
-        self.assert_rule(
-            "salty_ingredient_but_low_salt",
-            ["sojas mērce"],
-            salt=0.05,
+        self.assertEqual(
+            self.validate(["sojas mērce"], salt=0.05)["reasons"],
+            [],
         )
 
     def test_protein_ingredient_with_zero_protein(self):
-        self.assert_rule(
-            "protein_ingredient_present_but_protein_zero",
-            ["vistas gaļa"],
-            protein=0,
+        self.assertEqual(
+            self.validate(["vistas gaļa"], protein=0)["reasons"],
+            [],
         )
 
     def test_nuts_or_seeds_with_zero_fat(self):
-        self.assert_rule(
-            "nuts_or_seeds_present_but_fat_zero",
-            ["saulespuķu sēklas"],
-            fat_total=0,
+        self.assertEqual(
+            self.validate(["saulespuķu sēklas"], fat_total=0)["reasons"],
+            [],
         )
 
     def test_cocoa_checks_each_zero_field(self):
@@ -142,40 +134,29 @@ class NutritionValidatorTests(unittest.TestCase):
             fat_saturated=0,
             carbs_sugars=0,
         )
-        self.assertTrue({
-            "cocoa_or_chocolate_but_fat_zero",
-            "cocoa_or_chocolate_but_saturated_fat_zero",
-            "cocoa_or_chocolate_but_sugars_zero",
-        }.issubset(self.rules(result)))
+        self.assertEqual(result["reasons"], [])
 
     def test_saturated_fat_cannot_exceed_total_fat(self):
-        result = self.assert_rule(
-            "saturated_fat_exceeds_total_fat",
-            fat_total=5,
-            fat_saturated=8,
+        self.assertEqual(
+            self.validate([], fat_total=5, fat_saturated=8)["reasons"],
+            [],
         )
-        self.assertEqual(result["suspicion_level"], "high")
 
     def test_sugars_cannot_exceed_carbohydrates(self):
-        self.assert_rule(
-            "sugars_exceed_carbohydrates",
-            carbs_total=10,
-            carbs_sugars=15,
+        self.assertEqual(
+            self.validate([], carbs_total=10, carbs_sugars=15)["reasons"],
+            [],
         )
 
     def test_energy_inconsistency_uses_configured_tolerance(self):
-        result = self.assert_rule(
-            "energy_inconsistent_with_macronutrients",
+        result = self.validate(
+            [],
             energy_kcal=400,
             fat_total=10,
             carbs_total=10,
             protein=10,
         )
-        finding = next(
-            reason for reason in result["reasons"]
-            if reason["rule"] == "energy_inconsistent_with_macronutrients"
-        )
-        self.assertEqual(finding["estimated_energy_kcal"], 170)
+        self.assertEqual(result["reasons"], [])
 
     def test_energy_rounding_difference_is_not_flagged(self):
         result = self.validate(
@@ -192,18 +173,12 @@ class NutritionValidatorTests(unittest.TestCase):
 
     def test_zero_value_cluster_adds_one_reason(self):
         result = self.validate(
-            ["piens", "krējums", "cukurs"],
+            ["kviešu milti", "vistas gaļa", "saulespuķu eļļa"],
             fat_total=0,
-            fat_saturated=0,
-            carbs_sugars=0,
+            carbs_total=0,
+            protein=0,
         )
-        rules = [
-            reason["rule"] for reason in result["reasons"]
-            if reason["rule"] == "multiple_nutrition_values_inconsistent_with_ingredients"
-        ]
-        self.assertEqual(rules, [
-            "multiple_nutrition_values_inconsistent_with_ingredients"
-        ])
+        self.assertEqual(result["reasons"], [])
 
     def test_advisory_and_tiny_quantity_are_not_definite_evidence(self):
         advisory = self.validate(["var saturēt pienu"], fat_saturated=0)
@@ -282,13 +257,43 @@ class NutritionValidatorTests(unittest.TestCase):
         self.assertEqual(len(matching), 1)
         self.assertEqual(matching[0]["score"], 8)
 
-    def test_missing_values_do_not_create_false_findings(self):
-        result = self.validate(["cukurs", "sāls", "vistas gaļa"])
-        self.assertEqual(result, {
-            "suspicion_level": "none",
-            "suspicion_score": 0,
-            "reasons": [],
+    def test_missing_values_trigger_only_matching_approved_ingredients(self):
+        result = self.validate(["cukurs", "sāls", "piens", "vistas gaļa"])
+        self.assertEqual(self.rules(result), {
+            "sugar_ingredient_present_but_sugars_zero",
+            "salt_present_but_salt_zero",
+            "milk_present_but_saturated_fat_zero",
         })
+
+    def test_blank_values_trigger_approved_pairs(self):
+        result = self.validate(
+            ["cukurs", "sāls", "piens"],
+            carbs_sugars="",
+            salt=" ",
+            fat_saturated="",
+        )
+        self.assertEqual(len(result["reasons"]), 3)
+
+    def test_any_one_approved_pair_is_sufficient(self):
+        cases = [
+            (["cukurs"], {"carbs_sugars": None}, "sugar_ingredient_present_but_sugars_zero"),
+            (["sāls"], {"salt": None}, "salt_present_but_salt_zero"),
+            (["piens"], {"fat_saturated": None}, "milk_present_but_saturated_fat_zero"),
+        ]
+        for ingredients, nutrition, expected_rule in cases:
+            with self.subTest(expected_rule=expected_rule):
+                result = self.validate(ingredients, **nutrition)
+                self.assertEqual(self.rules(result), {expected_rule})
+                self.assertGreater(result["suspicion_score"], 0)
+
+    def test_positive_matching_values_prevent_all_three_flags(self):
+        result = self.validate(
+            ["cukurs", "sāls", "piens"],
+            carbs_sugars=0.1,
+            salt=0.01,
+            fat_saturated=0.1,
+        )
+        self.assertEqual(result["reasons"], [])
 
     def test_summary_counts_levels_rules_and_percentages(self):
         suspicious = self.validate(["cukurs"], carbs_sugars=0)

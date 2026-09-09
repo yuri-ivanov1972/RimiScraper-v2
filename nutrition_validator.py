@@ -18,26 +18,14 @@ from typing import Any, Iterable, Mapping, Sequence
 
 NUTRITION_VALIDATION_CONFIG = {
     "weights": {
-        "impossible_relationship": 10,
-        "fat_ingredient_zero": 8,
         "sugar_ingredient_zero": 8,
         "salt_ingredient_zero": 8,
         "dairy_saturated_fat_zero": 8,
-        "protein_ingredient_zero": 8,
-        "strong_association_low": 5,
-        "energy_inconsistent": 5,
-        "salty_ingredient_low_salt": 5,
-        "weak_association": 2,
-        "zero_value_cluster": 5,
     },
     "thresholds": {
         "none_max": 0,
         "low_max": 4,
         "medium_max": 9,
-        "energy_relative_difference": 0.20,
-        "energy_absolute_difference_kcal": 50.0,
-        "low_salt_grams": 0.10,
-        "zero_cluster_min_fields": 3,
         "small_quantity_percent": 1.0,
     },
 }
@@ -435,7 +423,12 @@ def _as_float(value: Any) -> float | None:
         return None
 
 
-def _zero(value: Any) -> bool:
+def _unreported(value: Any) -> bool:
+    """Treat missing, blank, and non-positive nutrition values as unreported."""
+    if value is None:
+        return True
+    if isinstance(value, str) and not value.strip():
+        return True
     number = _as_float(value)
     return number is not None and number <= 0
 
@@ -525,7 +518,7 @@ class NutritionValidator:
         ingredients: Iterable[str | Mapping[str, Any]] | None,
         nutrition: Mapping[str, Any] | None,
     ) -> dict[str, Any]:
-        """Return a reproducible validation result for a product."""
+        """Return findings for the three approved direct contradictions."""
         nutrition = nutrition or {}
         evidence = normalize_ingredients(
             ingredients,
@@ -541,25 +534,14 @@ class NutritionValidator:
             for item in dairy
             if not any(_contains_term(item.normalized_name, term) for term in LOW_FAT_DAIRY_TERMS)
         ]
-        fat = self._matches(evidence, "fat")
-        fat_rich = self._matches(evidence, "fat_rich")
         sugar = self._matches(evidence, "sugar")
-        carbohydrate = self._matches(evidence, "carbohydrate")
-        fruit = self._matches(evidence, "fruit")
         salt = self._matches(evidence, "salt")
-        salty = self._matches(evidence, "salty")
-        protein = self._matches(evidence, "protein")
-        nuts_seeds = self._matches(evidence, "nuts_seeds")
-        cocoa = self._matches(evidence, "cocoa")
 
-        fat_total = nutrition.get("fat_total")
         fat_saturated = nutrition.get("fat_saturated")
-        carbs_total = nutrition.get("carbs_total")
         carbs_sugars = nutrition.get("carbs_sugars")
-        protein_value = nutrition.get("protein")
         salt_value = nutrition.get("salt")
 
-        if dairy and _zero(fat_saturated):
+        if dairy and _unreported(fat_saturated):
             reasons.append(self._finding(
                 rule="milk_present_but_saturated_fat_zero",
                 severity="high",
@@ -567,32 +549,10 @@ class NutritionValidator:
                 evidence=dairy,
                 nutrition_field="saturated_fat",
                 nutrition_value=fat_saturated,
-                message="Dairy ingredients are present but saturated fat is reported as zero.",
+                message="Dairy ingredients are present but saturated fat is zero or unreported.",
             ))
 
-        if fat and _zero(fat_total):
-            reasons.append(self._finding(
-                rule="fat_ingredient_present_but_fat_zero",
-                severity="high",
-                weight="fat_ingredient_zero",
-                evidence=fat,
-                nutrition_field="fat",
-                nutrition_value=fat_total,
-                message="A fat or oil ingredient is present but total fat is reported as zero.",
-            ))
-
-        if fat_rich and _zero(fat_saturated):
-            reasons.append(self._finding(
-                rule="high_saturated_fat_ingredient_but_saturated_fat_zero",
-                severity="medium",
-                weight="strong_association_low",
-                evidence=fat_rich,
-                nutrition_field="saturated_fat",
-                nutrition_value=fat_saturated,
-                message="A strongly saturated-fat-associated ingredient is present but saturated fat is reported as zero.",
-            ))
-
-        if sugar and _zero(carbs_sugars):
+        if sugar and _unreported(carbs_sugars):
             reasons.append(self._finding(
                 rule="sugar_ingredient_present_but_sugars_zero",
                 severity="high",
@@ -600,32 +560,10 @@ class NutritionValidator:
                 evidence=sugar,
                 nutrition_field="sugars",
                 nutrition_value=carbs_sugars,
-                message="A sugar ingredient is present but sugars are reported as zero.",
+                message="A sugar ingredient is present but sugars are zero or unreported.",
             ))
 
-        if carbohydrate and _zero(carbs_total):
-            reasons.append(self._finding(
-                rule="carbohydrate_ingredient_present_but_carbohydrates_zero",
-                severity="medium",
-                weight="strong_association_low",
-                evidence=carbohydrate,
-                nutrition_field="carbohydrates",
-                nutrition_value=carbs_total,
-                message="A carbohydrate ingredient is present but carbohydrates are reported as zero.",
-            ))
-
-        if fruit and _zero(carbs_sugars):
-            reasons.append(self._finding(
-                rule="fruit_present_but_sugars_zero",
-                severity="low",
-                weight="weak_association",
-                evidence=fruit,
-                nutrition_field="sugars",
-                nutrition_value=carbs_sugars,
-                message="Fruit ingredients are present but sugars are reported as zero.",
-            ))
-
-        if salt and _zero(salt_value):
+        if salt and _unreported(salt_value):
             reasons.append(self._finding(
                 rule="salt_present_but_salt_zero",
                 severity="high",
@@ -633,174 +571,7 @@ class NutritionValidator:
                 evidence=salt,
                 nutrition_field="salt",
                 nutrition_value=salt_value,
-                message="Salt is present in the ingredients but salt is reported as zero.",
-            ))
-
-        if salty and (
-            _as_float(salt_value) is not None
-            and _as_float(salt_value) <= float(self.thresholds["low_salt_grams"])
-        ):
-            reasons.append(self._finding(
-                rule="salty_ingredient_but_low_salt",
-                severity="medium",
-                weight="salty_ingredient_low_salt",
-                evidence=salty,
-                nutrition_field="salt",
-                nutrition_value=salt_value,
-                message="A salty ingredient is present but reported salt is unusually low.",
-            ))
-
-        if protein and _zero(protein_value):
-            reasons.append(self._finding(
-                rule="protein_ingredient_present_but_protein_zero",
-                severity="high",
-                weight="protein_ingredient_zero",
-                evidence=protein,
-                nutrition_field="protein",
-                nutrition_value=protein_value,
-                message="A protein-rich ingredient is present but protein is reported as zero.",
-            ))
-
-        if nuts_seeds and _zero(fat_total):
-            reasons.append(self._finding(
-                rule="nuts_or_seeds_present_but_fat_zero",
-                severity="low",
-                weight="weak_association",
-                evidence=nuts_seeds,
-                nutrition_field="fat",
-                nutrition_value=fat_total,
-                message="Nuts or seeds are present but total fat is reported as zero.",
-            ))
-
-        if cocoa:
-            if _zero(fat_total):
-                reasons.append(self._finding(
-                    rule="cocoa_or_chocolate_but_fat_zero",
-                    severity="low",
-                    weight="weak_association",
-                    evidence=cocoa,
-                    nutrition_field="fat",
-                    nutrition_value=fat_total,
-                    message="Cocoa or chocolate is present but total fat is reported as zero.",
-                ))
-            if _zero(fat_saturated):
-                reasons.append(self._finding(
-                    rule="cocoa_or_chocolate_but_saturated_fat_zero",
-                    severity="low",
-                    weight="weak_association",
-                    evidence=cocoa,
-                    nutrition_field="saturated_fat",
-                    nutrition_value=fat_saturated,
-                    message="Cocoa or chocolate is present but saturated fat is reported as zero.",
-                ))
-            if _zero(carbs_sugars):
-                reasons.append(self._finding(
-                    rule="cocoa_or_chocolate_but_sugars_zero",
-                    severity="low",
-                    weight="weak_association",
-                    evidence=cocoa,
-                    nutrition_field="sugars",
-                    nutrition_value=carbs_sugars,
-                    message="Cocoa or chocolate is present but sugars are reported as zero.",
-                ))
-
-        if (
-            _as_float(fat_saturated) is not None
-            and _as_float(fat_total) is not None
-            and _as_float(fat_saturated) > _as_float(fat_total)
-        ):
-            reasons.append(self._finding(
-                rule="saturated_fat_exceeds_total_fat",
-                severity="high",
-                weight="impossible_relationship",
-                nutrition_field="saturated_fat",
-                nutrition_value=fat_saturated,
-                related_nutrition_field="fat",
-                related_nutrition_value=_format_value(fat_total),
-                message="Saturated fat cannot exceed total fat.",
-            ))
-
-        if (
-            _as_float(carbs_sugars) is not None
-            and _as_float(carbs_total) is not None
-            and _as_float(carbs_sugars) > _as_float(carbs_total)
-        ):
-            reasons.append(self._finding(
-                rule="sugars_exceed_carbohydrates",
-                severity="high",
-                weight="impossible_relationship",
-                nutrition_field="sugars",
-                nutrition_value=carbs_sugars,
-                related_nutrition_field="carbohydrates",
-                related_nutrition_value=_format_value(carbs_total),
-                message="Sugars cannot exceed total carbohydrates.",
-            ))
-
-        energy_declared = _as_float(nutrition.get("energy_kcal"))
-        if energy_declared is None:
-            energy_kj = _as_float(nutrition.get("energy_kj"))
-            if energy_kj is not None:
-                energy_declared = energy_kj / 4.184
-        protein_number = _as_float(protein_value)
-        carbs_number = _as_float(carbs_total)
-        fat_number = _as_float(fat_total)
-        fiber_number = _as_float(nutrition.get("fiber")) or 0.0
-        if (
-            energy_declared is not None
-            and energy_declared > 0
-            and protein_number is not None
-            and carbs_number is not None
-            and fat_number is not None
-        ):
-            estimated_kcal = (
-                protein_number * 4
-                + carbs_number * 4
-                + fat_number * 9
-                + fiber_number * 2
-            )
-            absolute_difference = abs(energy_declared - estimated_kcal)
-            relative_difference = absolute_difference / energy_declared
-            if (
-                relative_difference > float(self.thresholds["energy_relative_difference"])
-                and absolute_difference
-                > float(self.thresholds["energy_absolute_difference_kcal"])
-            ):
-                reasons.append(self._finding(
-                    rule="energy_inconsistent_with_macronutrients",
-                    severity="medium",
-                    weight="energy_inconsistent",
-                    nutrition_field="energy_kcal",
-                    nutrition_value=energy_declared,
-                    estimated_energy_kcal=round(estimated_kcal, 2),
-                    relative_difference=round(relative_difference, 4),
-                    message="Declared energy differs substantially from the macronutrient estimate.",
-                ))
-
-        cluster_pairs = (
-            ("fat", fat or fat_rich or nuts_seeds or cocoa, fat_total),
-            ("saturated_fat", dairy or fat_rich, fat_saturated),
-            ("sugars", sugar or fruit or cocoa, carbs_sugars),
-            ("carbohydrates", carbohydrate, carbs_total),
-            ("protein", protein, protein_value),
-            ("salt", salt or salty, salt_value),
-        )
-        cluster_fields = [
-            field for field, matched, value in cluster_pairs if matched and _zero(value)
-        ]
-        if len(cluster_fields) >= int(self.thresholds["zero_cluster_min_fields"]):
-            cluster_evidence: list[IngredientEvidence] = []
-            for _, matched, _ in cluster_pairs:
-                for item in matched:
-                    if item not in cluster_evidence:
-                        cluster_evidence.append(item)
-            reasons.append(self._finding(
-                rule="multiple_nutrition_values_inconsistent_with_ingredients",
-                severity="medium",
-                weight="zero_value_cluster",
-                evidence=cluster_evidence,
-                nutrition_field=cluster_fields,
-                nutrition_value=0,
-                message="Several nutritionally meaningful ingredient groups correspond to zero nutrition values.",
+                message="Salt is present in the ingredients but salt is zero or unreported.",
             ))
 
         score_number = float(sum(float(reason["score"]) for reason in reasons))

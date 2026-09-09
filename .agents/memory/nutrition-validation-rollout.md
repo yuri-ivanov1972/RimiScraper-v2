@@ -3,8 +3,8 @@ name: Nutrition validation rollout
 description: Scope and evidence boundaries for ingredient/nutrition consistency checks.
 ---
 
-The initial nutrition-consistency backfill was reviewed on 2026-08-29. Its schema is approved for the production deployment startup migration without changing the reviewed keyword groups, weights, or thresholds. Do not automatically run validation after scraping; that integration remains separate work.
+Nutrition validation is intentionally limited to three direct ingredient/value contradictions, joined by OR: sugar with sugars unreported, salt with salt unreported, or dairy with saturated fat unreported. Unreported means missing, blank, or non-positive.
 
-**Why:** Two complete development backfills produced identical distributions with no failures. Frequent high/medium findings were explainable contradictions; isolated contextual and rounding cases did not justify weakening broad rules.
+**Why:** The results are shared externally with Rimi, so false-positive avoidance is more important than detecting broader mathematical, energy, ingredient-association, or zero-cluster anomalies.
 
-**How to apply:** Treat parsed ingredient mappings as the source of ingredient identity. Raw ingredient labels may recover explicit percentages and advisory-clause context, but must not introduce separate ingredient identities or modify source nutrition data. Deployment startup may apply and verify the additive schema migration; production backfill and scrape-time execution require their own rollout steps.
+**How to apply:** Treat parsed ingredient mappings as the source of identity. Raw labels may recover percentage and advisory context. Weak/advisory and explicitly tiny evidence must not trigger a finding. Recalculate stored validation rows after rule changes.
