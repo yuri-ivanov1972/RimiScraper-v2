@@ -2064,6 +2064,7 @@ def section_nutrition_validation_report():
     """Section: Rule-based ingredient/nutrition consistency report."""
     import json
     import pandas as pd
+    from nutrition_report_export import format_findings_for_csv
 
     st.header("🚩 Nutrition Consistency Checks")
     st.caption(
@@ -2230,9 +2231,9 @@ def section_nutrition_validation_report():
             "low": "🟡 Low",
         }.get(level, level.title())
 
-    def _display_rows(rows):
-        return [
-            {
+    def _display_rows(rows, include_finding_details=False):
+        def display_row(row):
+            result = {
                 "Product": row["product"],
                 "SKU": row["sku"],
                 "Severity": _level_label(row["suspicion_level"]),
@@ -2242,6 +2243,14 @@ def section_nutrition_validation_report():
                 if row.get("checked_at") else "—",
                 "Open": row.get("rimi_url") or "",
             }
+            if include_finding_details:
+                result["Finding details"] = format_findings_for_csv(
+                    row.get("reasons")
+                )
+            return result
+
+        return [
+            display_row(row)
             for row in rows
         ]
 
@@ -2267,7 +2276,9 @@ def section_nutrition_validation_report():
         },
     )
 
-    all_display_df = pd.DataFrame(_display_rows(all_report_rows))
+    all_display_df = pd.DataFrame(
+        _display_rows(all_report_rows, include_finding_details=True)
+    )
     st.download_button(
         "⬇️ Download all matching results (CSV)",
         data=all_display_df.to_csv(index=False).encode("utf-8"),
