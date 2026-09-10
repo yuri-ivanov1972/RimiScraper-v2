@@ -3,7 +3,24 @@
 import csv
 import io
 
-from nutrition_report_export import format_findings_for_csv
+from nutrition_report_export import (
+    SUSPICIOUS_PRODUCT_ELIGIBILITY_SQL,
+    format_findings_for_csv,
+)
+
+
+def test_report_filters_unavailable_products_and_latest_refresh_failures():
+    normalized = " ".join(SUSPICIOUS_PRODUCT_ELIGIBILITY_SQL.split())
+
+    assert "SELECT pph.is_available FROM product_price_history pph" in normalized
+    assert (
+        "ORDER BY pph.recorded_at DESC, pph.price_history_id DESC LIMIT 1"
+        in normalized
+    )
+    assert "), FALSE) IS TRUE" in normalized
+    assert "cpj.job_type = 'suspicious_refresh'" in normalized
+    assert "ORDER BY cpj.id DESC, ppl.id DESC LIMIT 1" in normalized
+    assert "<> 'failed'" in normalized
 
 
 def test_formats_one_complete_finding():

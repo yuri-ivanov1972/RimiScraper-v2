@@ -2064,7 +2064,10 @@ def section_nutrition_validation_report():
     """Section: Rule-based ingredient/nutrition consistency report."""
     import json
     import pandas as pd
-    from nutrition_report_export import format_findings_for_csv
+    from nutrition_report_export import (
+        SUSPICIOUS_PRODUCT_ELIGIBILITY_SQL,
+        format_findings_for_csv,
+    )
 
     st.header("🚩 Nutrition Consistency Checks")
     st.caption(
@@ -2162,7 +2165,10 @@ def section_nutrition_validation_report():
         st.session_state.validation_report_page = 1
         st.session_state.validation_report_filter_signature = filter_signature
 
-    where_parts = ["nvr.suspicion_score > 0"]
+    where_parts = [
+        "nvr.suspicion_score > 0",
+        SUSPICIOUS_PRODUCT_ELIGIBILITY_SQL,
+    ]
     query_params = []
     if selected_level != "All suspicious":
         where_parts.append("nvr.suspicion_level = %s")

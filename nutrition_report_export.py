@@ -6,6 +6,26 @@ from collections.abc import Iterable, Mapping
 from typing import Any
 
 
+SUSPICIOUS_PRODUCT_ELIGIBILITY_SQL = """
+    COALESCE((
+        SELECT pph.is_available
+        FROM product_price_history pph
+        WHERE pph.product_id = nvr.product_id
+        ORDER BY pph.recorded_at DESC, pph.price_history_id DESC
+        LIMIT 1
+    ), FALSE) IS TRUE
+    AND COALESCE((
+        SELECT ppl.status
+        FROM product_processing_log ppl
+        JOIN category_processing_jobs cpj ON cpj.id = ppl.job_id
+        WHERE ppl.product_id = nvr.product_id
+          AND cpj.job_type = 'suspicious_refresh'
+        ORDER BY cpj.id DESC, ppl.id DESC
+        LIMIT 1
+    ), '') <> 'failed'
+"""
+
+
 def _display_value(value: Any) -> str:
     if value is None or value == "":
         return "missing"
