@@ -1437,6 +1437,45 @@ def section_nutrition_enrichment():
             st.metric("From Rimi", stats['from_rimi'])
         
         st.divider()
+
+        st.subheader("Target one product")
+        target_col1, target_col2 = st.columns([3, 1])
+        with target_col1:
+            target_identifier = st.text_input(
+                "Product ID or SKU",
+                placeholder="Enter an exact SKU or numeric product ID",
+                key="enrichment_target_identifier",
+            )
+        with target_col2:
+            st.write("")
+            st.write("")
+            target_clicked = st.button(
+                "🔍 Find and process",
+                disabled=st.session_state.enrichment_processing,
+                use_container_width=True,
+            )
+
+        if target_clicked:
+            st.session_state.enrichment_batch = None
+            st.session_state.enrichment_log = []
+            st.session_state.enrichment_processing = True
+            try:
+                with st.spinner("Finding and processing product..."):
+                    product = service.get_product_for_enrichment(
+                        target_identifier
+                    )
+                    st.session_state.enrichment_batch = service.process_batch(
+                        [product]
+                    )
+                st.success(
+                    f"Loaded {product.name} (SKU: {product.sku}) for review."
+                )
+            except (ValueError, LookupError) as exc:
+                st.warning(str(exc))
+            finally:
+                st.session_state.enrichment_processing = False
+
+        st.divider()
         
         col1, col2, col3 = st.columns([1, 1, 2])
         

@@ -221,6 +221,111 @@ class NutritionEnrichmentService:
                 
         finally:
             conn.close()
+
+    @staticmethod
+    def _product_from_row(row: Dict[str, Any]) -> ProductForEnrichment:
+        """Convert a product/nutrition query row into the enrichment model."""
+        nutrition_fields = (
+            'energy_kcal',
+            'fat_total',
+            'fat_saturated',
+            'carbs_total',
+            'carbs_sugars',
+            'protein',
+            'salt',
+            'fiber',
+        )
+        current_nutrition = {
+            field: float(row[field]) if row.get(field) is not None else None
+            for field in nutrition_fields
+        }
+        return ProductForEnrichment(
+            product_id=row['product_id'],
+            sku=row['sku'],
+            name=row['name'],
+            category_id=row.get('category_id'),
+            category_name=row.get('category_name'),
+            current_nutrition=current_nutrition,
+        )
+
+    def get_product_for_enrichment(self, identifier: str) -> ProductForEnrichment:
+        """Resolve one eligible product by SKU first, then numeric product ID."""
+        identifier = str(identifier or '').strip()
+        if not identifier:
+            raise ValueError("Enter a product ID or SKU.")
+
+        select_sql = """
+            SELECT
+                p.product_id, p.sku, p.name, p.category_id,
+                nc.name_lv AS category_name,
+                nf.energy_kcal, nf.fat_total, nf.fat_saturated,
+                nf.carbs_total, nf.carbs_sugars, nf.protein,
+                nf.salt, nf.fiber
+            FROM products p
+            LEFT JOIN normalized_categories nc ON p.category_id = nc.category_id
+            LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
+        """
+        eligible_sql = """
+            AND p.needs_enrichment = TRUE
+            AND COALESCE(p.enrichment_reviewed, FALSE) = FALSE
+        """
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    f"{select_sql} WHERE p.sku = %s {eligible_sql} LIMIT 1",
+                    (identifier,),
+                )
+                row = cur.fetchone()
+
+                if row is None and identifier.isdigit():
+                    cur.execute(
+                        f"{select_sql} WHERE p.product_id = %s {eligible_sql} LIMIT 1",
+                        (int(identifier),),
+                    )
+                    row = cur.fetchone()
+
+                if row is not None:
+                    product = self._product_from_row(row)
+                    self.status_callback(
+                        f"🎯 Loaded targeted product: {product.name} "
+                        f"(SKU: {product.sku}, ID: {product.product_id})"
+                    )
+                    return product
+
+                cur.execute(
+                    """
+                    SELECT product_id
+                    FROM products
+                    WHERE sku = %s
+                    LIMIT 1
+                    """,
+                    (identifier,),
+                )
+                existing = cur.fetchone()
+                if existing is None and identifier.isdigit():
+                    cur.execute(
+                        """
+                        SELECT product_id
+                        FROM products
+                        WHERE product_id = %s
+                        LIMIT 1
+                        """,
+                        (int(identifier),),
+                    )
+                    existing = cur.fetchone()
+
+                if existing is not None:
+                    raise ValueError(
+                        "This product does not need enrichment or has already "
+                        "been reviewed."
+                    )
+                raise LookupError(
+                    f"No product found for product ID or SKU “{identifier}”."
+                )
+        finally:
+            conn.close()
     
     def process_single_product(self, product: ProductForEnrichment, num_options: int = 5) -> EnrichmentMatch:
         """Process a single product: translate and search USDA for multiple options"""
