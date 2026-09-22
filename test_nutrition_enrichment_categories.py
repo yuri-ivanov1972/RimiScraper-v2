@@ -1,6 +1,19 @@
 """Tests for category-filtered nutrition enrichment batches."""
 
-from nutrition_enrichment_service import NutritionEnrichmentService
+from streamlit.testing.v1 import AppTest
+
+import nutrition_enrichment_service
+from nutrition_enrichment_service import (
+    EnrichmentBatch,
+    NutritionEnrichmentService,
+    ProductForEnrichment,
+)
+
+
+def nutrition_enrichment_test_app():
+    from main import section_nutrition_enrichment
+
+    section_nutrition_enrichment()
 
 
 class RecordingCursor:
@@ -60,6 +73,110 @@ def product_row():
         "fiber": None,
         "enrichment_skipped": False,
     }
+
+
+class RecordingEnrichmentService:
+    batch_requests = []
+    target_requests = []
+
+    def __init__(self, status_callback=None):
+        self.status_callback = status_callback
+
+    def get_enrichment_stats(self):
+        return {
+            "needs_enrichment": 2,
+            "reviewed": 0,
+            "from_usda": 0,
+            "from_rimi": 0,
+            "skipped": 0,
+        }
+
+    def get_enrichment_categories(self):
+        return [
+            {
+                "category_id": 3,
+                "category_path": "Food › Dairy",
+                "product_count": 1,
+            },
+            {
+                "category_id": 8,
+                "category_path": "Food › Bakery",
+                "product_count": 1,
+            },
+        ]
+
+    def get_products_needing_enrichment(self, limit, category_id=None):
+        self.batch_requests.append({
+            "limit": limit,
+            "category_id": category_id,
+        })
+        return [
+            ProductForEnrichment(
+                product_id=7,
+                sku="SKU-7",
+                name="Batch product",
+            )
+        ]
+
+    def get_product_for_enrichment(self, identifier):
+        self.target_requests.append(identifier)
+        return ProductForEnrichment(
+            product_id=9,
+            sku=str(identifier),
+            name="Target product",
+        )
+
+    def process_batch(self, products):
+        return EnrichmentBatch()
+
+
+def test_submitted_category_stays_fixed_across_reruns_and_targeted_lookup(
+    monkeypatch,
+):
+    RecordingEnrichmentService.batch_requests = []
+    RecordingEnrichmentService.target_requests = []
+    monkeypatch.setattr(
+        nutrition_enrichment_service,
+        "NutritionEnrichmentService",
+        RecordingEnrichmentService,
+    )
+
+    app = AppTest.from_function(nutrition_enrichment_test_app)
+    app.run()
+
+    app.selectbox(key="enrichment_category_id").select(3)
+    next(button for button in app.button if button.label == "🔄 Load Batch").click().run()
+
+    assert RecordingEnrichmentService.batch_requests == [{
+        "limit": 20,
+        "category_id": 3,
+    }]
+    assert app.session_state.enrichment_batch_category_id == 3
+    assert app.session_state.enrichment_batch_scope == "Food › Dairy (1 products)"
+
+    app.selectbox(key="enrichment_category_id").select(8).run()
+
+    assert RecordingEnrichmentService.batch_requests == [{
+        "limit": 20,
+        "category_id": 3,
+    }]
+    assert any(
+        "Batch · Food › Dairy (1 products)" in message.value
+        for message in app.info
+    )
+
+    app.text_input(key="enrichment_target_identifier").set_value("SKU-9")
+    next(
+        button
+        for button in app.button
+        if button.label == "🔍 Find and process"
+    ).click().run()
+
+    assert RecordingEnrichmentService.target_requests == ["SKU-9"]
+    assert RecordingEnrichmentService.batch_requests == [{
+        "limit": 20,
+        "category_id": 3,
+    }]
 
 
 def test_all_categories_preserves_unfiltered_batch_query_and_limit():
