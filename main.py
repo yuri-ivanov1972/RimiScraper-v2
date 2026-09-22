@@ -1418,6 +1418,10 @@ def section_nutrition_enrichment():
         st.session_state.enrichment_processing = False
     if 'enrichment_log' not in st.session_state:
         st.session_state.enrichment_log = []
+    if 'enrichment_batch_category_id' not in st.session_state:
+        st.session_state.enrichment_batch_category_id = None
+    if 'enrichment_batch_scope' not in st.session_state:
+        st.session_state.enrichment_batch_scope = "All categories"
     
     def log_callback(msg):
         st.session_state.enrichment_log.append(msg)
@@ -1425,6 +1429,7 @@ def section_nutrition_enrichment():
     try:
         service = NutritionEnrichmentService(status_callback=log_callback)
         stats = service.get_enrichment_stats()
+        enrichment_categories = service.get_enrichment_categories()
         
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -1477,32 +1482,75 @@ def section_nutrition_enrichment():
 
         st.divider()
         
-        col1, col2, col3 = st.columns([1, 1, 2])
+        category_options = {None: "All categories"}
+        category_options.update({
+            row["category_id"]: (
+                f"{row['category_path']} ({row['product_count']} products)"
+            )
+            for row in enrichment_categories
+        })
+
+        col1, col2, col3, col4 = st.columns([1, 2, 1, 2])
         
         with col1:
             batch_size = st.selectbox("Batch Size", [10, 20, 30, 50], index=1)
-        
+
         with col2:
-            if st.button("🔄 Load Batch", type="primary", disabled=st.session_state.enrichment_processing):
+            selected_category_id = st.selectbox(
+                "Category",
+                options=list(category_options),
+                format_func=lambda value: category_options[value],
+                key="enrichment_category_id",
+            )
+
+        with col3:
+            st.write("")
+            st.write("")
+            if st.button(
+                "🔄 Load Batch",
+                type="primary",
+                disabled=st.session_state.enrichment_processing,
+                use_container_width=True,
+            ):
                 st.session_state.enrichment_log = []
+                st.session_state.enrichment_batch = None
+                st.session_state.enrichment_batch_category_id = (
+                    selected_category_id
+                )
+                st.session_state.enrichment_batch_scope = category_options[
+                    selected_category_id
+                ]
                 st.session_state.enrichment_processing = True
                 st.rerun()
         
-        with col3:
+        with col4:
             if st.session_state.enrichment_batch:
                 batch = st.session_state.enrichment_batch
-                st.info(f"Batch: {batch.approved} approved, {batch.skipped} skipped, {batch.pending} pending, {batch.no_match} no match")
+                st.info(
+                    f"Batch · {st.session_state.enrichment_batch_scope}: "
+                    f"{batch.approved} approved, {batch.skipped} skipped, "
+                    f"{batch.pending} pending, {batch.no_match} no match"
+                )
             if stats['skipped'] > 0:
                 st.caption(f"📋 {stats['skipped']} products in skip list (sorted to end of batches)")
         
         if st.session_state.enrichment_processing and not st.session_state.enrichment_batch:
             with st.spinner("Loading and processing products..."):
-                products = service.get_products_needing_enrichment(limit=batch_size)
+                products = service.get_products_needing_enrichment(
+                    limit=batch_size,
+                    category_id=st.session_state.enrichment_batch_category_id,
+                )
                 if products:
                     batch = service.process_batch(products)
                     st.session_state.enrichment_batch = batch
                 else:
-                    st.success("No products need enrichment!")
+                    if st.session_state.enrichment_batch_category_id is None:
+                        st.success("No products need enrichment!")
+                    else:
+                        st.info(
+                            "No products need enrichment in "
+                            f"{st.session_state.enrichment_batch_scope}."
+                        )
                 st.session_state.enrichment_processing = False
                 st.rerun()
         

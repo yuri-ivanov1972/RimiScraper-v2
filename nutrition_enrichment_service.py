@@ -161,13 +161,96 @@ class NutritionEnrichmentService:
                 }
         finally:
             conn.close()
-    
-    def get_products_needing_enrichment(self, limit: int = 20, offset: int = 0) -> List[ProductForEnrichment]:
-        """Get products that need nutrition data enrichment"""
+
+    def get_enrichment_categories(self) -> List[Dict[str, Any]]:
+        """Return category scopes that contain eligible products."""
         conn = self._get_connection()
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
                 cur.execute("""
+                    WITH RECURSIVE category_paths AS (
+                        SELECT category_id, parent_category_id, name_lv,
+                               name_lv::TEXT AS category_path
+                        FROM normalized_categories
+                        WHERE parent_category_id IS NULL
+
+                        UNION ALL
+
+                        SELECT child.category_id, child.parent_category_id,
+                               child.name_lv,
+                               parent.category_path || ' › ' || child.name_lv
+                        FROM normalized_categories child
+                        JOIN category_paths parent
+                          ON parent.category_id = child.parent_category_id
+                    ),
+                    descendants AS (
+                        SELECT category_id AS scope_id,
+                               category_id AS descendant_id
+                        FROM normalized_categories
+
+                        UNION ALL
+
+                        SELECT descendants.scope_id, child.category_id
+                        FROM descendants
+                        JOIN normalized_categories child
+                          ON child.parent_category_id =
+                             descendants.descendant_id
+                    )
+                    SELECT paths.category_id,
+                           paths.category_path,
+                           COUNT(DISTINCT products.product_id) AS product_count
+                    FROM category_paths paths
+                    JOIN descendants
+                      ON descendants.scope_id = paths.category_id
+                    JOIN products
+                      ON products.category_id = descendants.descendant_id
+                     AND products.needs_enrichment = TRUE
+                     AND COALESCE(products.enrichment_reviewed, FALSE) = FALSE
+                    GROUP BY paths.category_id, paths.category_path
+                    ORDER BY paths.category_path
+                """)
+                return [dict(row) for row in cur.fetchall()]
+        finally:
+            conn.close()
+
+    def get_products_needing_enrichment(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        category_id: Optional[int] = None,
+    ) -> List[ProductForEnrichment]:
+        """Get eligible products, optionally from one category subtree."""
+        category_cte = ""
+        category_filter = ""
+        params: List[Any] = []
+        if category_id is not None:
+            category_cte = """
+                WITH RECURSIVE selected_categories AS (
+                    SELECT category_id
+                    FROM normalized_categories
+                    WHERE category_id = %s
+
+                    UNION ALL
+
+                    SELECT child.category_id
+                    FROM normalized_categories child
+                    JOIN selected_categories parent
+                      ON child.parent_category_id = parent.category_id
+                )
+            """
+            category_filter = """
+                AND p.category_id IN (
+                    SELECT category_id FROM selected_categories
+                )
+            """
+            params.append(category_id)
+        params.extend((limit, offset))
+
+        conn = self._get_connection()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(f"""
+                    {category_cte}
                     SELECT 
                         p.product_id,
                         p.sku,
@@ -188,35 +271,23 @@ class NutritionEnrichmentService:
                     LEFT JOIN nutritionfacts nf ON p.product_id = nf.product_id
                     WHERE p.needs_enrichment = TRUE
                       AND (p.enrichment_reviewed IS NULL OR p.enrichment_reviewed = FALSE)
+                      {category_filter}
                     ORDER BY COALESCE(p.enrichment_skipped, FALSE) ASC, p.product_id
                     LIMIT %s OFFSET %s
-                """, (limit, offset))
+                """, tuple(params))
                 
                 rows = cur.fetchall()
-                products = []
+                products = [self._product_from_row(row) for row in rows]
                 
-                for row in rows:
-                    current_nutrition = {
-                        'energy_kcal': float(row['energy_kcal']) if row['energy_kcal'] else None,
-                        'fat_total': float(row['fat_total']) if row['fat_total'] else None,
-                        'fat_saturated': float(row['fat_saturated']) if row['fat_saturated'] else None,
-                        'carbs_total': float(row['carbs_total']) if row['carbs_total'] else None,
-                        'carbs_sugars': float(row['carbs_sugars']) if row['carbs_sugars'] else None,
-                        'protein': float(row['protein']) if row['protein'] else None,
-                        'salt': float(row['salt']) if row['salt'] else None,
-                        'fiber': float(row['fiber']) if row['fiber'] else None,
-                    }
-                    
-                    products.append(ProductForEnrichment(
-                        product_id=row['product_id'],
-                        sku=row['sku'],
-                        name=row['name'],
-                        category_id=row['category_id'],
-                        category_name=row['category_name'],
-                        current_nutrition=current_nutrition
-                    ))
-                
-                self.status_callback(f"📦 Loaded {len(products)} products needing enrichment")
+                scope = (
+                    f"category subtree {category_id}"
+                    if category_id is not None
+                    else "all categories"
+                )
+                self.status_callback(
+                    f"📦 Loaded {len(products)} products needing enrichment "
+                    f"from {scope}"
+                )
                 return products
                 
         finally:
