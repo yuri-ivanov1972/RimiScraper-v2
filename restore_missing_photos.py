@@ -1,11 +1,13 @@
-"""One-off, photo-only repair for development products without productphotos rows.
+"""One-off, photo-only repair for products without productphotos rows.
 
-Run: python restore_missing_photos.py --execute
-Without --execute, the command reports the affected products without fetching or saving.
+Check production (read-only): python restore_missing_photos.py --production
+Repair production: python restore_missing_photos.py --production --execute --confirm-production
+Development is the default; without --execute, no pages are fetched or saved.
 """
 
 import argparse
 import os
+from contextlib import closing
 from urllib.parse import urlparse
 
 import psycopg2
@@ -127,27 +129,68 @@ def repair(conn, client):
     return recovered, remaining
 
 
+def choose_database(args, environ):
+    """Require an independently configured production URL and explicit write consent."""
+    if args.confirm_production and not (args.production and args.execute):
+        raise ValueError("--confirm-production requires --production and --execute")
+    if args.production:
+        prod_url = environ.get("PROD_DATABASE_URL")
+        dev_url = environ.get("DATABASE_URL")
+        if not prod_url or not dev_url or prod_url == dev_url:
+            raise ValueError("Production requires distinct PROD_DATABASE_URL and DATABASE_URL")
+        if args.execute and not args.confirm_production:
+            raise ValueError(
+                "Production repair requires --production --execute --confirm-production"
+            )
+        return prod_url
+
+    if (
+        environ.get("DEV_MODE", "").lower() not in ("true", "1", "yes")
+        and environ.get("ENVIRONMENT", "").lower() not in ("development", "dev")
+    ):
+        raise ValueError("Development photo repair requires development mode")
+    db_url = environ["DATABASE_URL"]
+    if environ.get("PROD_DATABASE_URL") == db_url:
+        raise ValueError("Refusing to treat production as development")
+    return db_url
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--production", action="store_true", help="Use production database")
     parser.add_argument("--execute", action="store_true", help="Fetch and save missing photos")
+    parser.add_argument(
+        "--confirm-production", action="store_true",
+        help="Required with --production --execute to permit production inserts",
+    )
     args = parser.parse_args()
-    if (
-        os.environ.get("DEV_MODE", "").lower() not in ("true", "1", "yes")
-        and os.environ.get("ENVIRONMENT", "").lower() not in ("development", "dev")
-    ):
-        raise RuntimeError("Photo repair requires development mode")
-    db_url = os.environ["DATABASE_URL"]
-    if os.environ.get("PROD_DATABASE_URL") == db_url:
-        raise RuntimeError("Refusing to repair the production database")
-    with psycopg2.connect(db_url, connect_timeout=10) as conn:
+    try:
+        db_url = choose_database(args, os.environ)
+    except (ValueError, KeyError) as exc:
+        parser.error(str(exc))
+
+    target = "PRODUCTION" if args.production else "development"
+    with closing(psycopg2.connect(db_url, connect_timeout=10)) as conn:
         if not args.execute:
+            conn.set_session(readonly=True)
             rows = missing_products(conn)
-            print(f"{len(rows)} products without photos")
+            print(f"{target} read-only check: {len(rows)} products without photos")
             for product_id, sku, url in rows:
                 print(f"Product {product_id}, SKU {sku}: {url}")
             return
+        print(f"{target} confirmed photo-only repair", flush=True)
         client = RobustWebClient(status_callback=lambda _message: None)
         repair(conn, client)
+    # Verify from a fresh, read-only connection rather than relying on the
+    # writer's transaction state.
+    with closing(psycopg2.connect(db_url, connect_timeout=10)) as verify_conn:
+        verify_conn.set_session(readonly=True)
+        still_missing = missing_products(verify_conn)
+        print(
+            f"Independent {target} verification: "
+            f"{len(still_missing)} products still without photos",
+            flush=True,
+        )
 
 
 if __name__ == "__main__":

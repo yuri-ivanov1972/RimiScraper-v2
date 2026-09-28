@@ -6,3 +6,18 @@ id = "KkYggD3PSRsBDjPZjL1vt"
 uri = "file://rimi_product_scraper_slides.pptx"
 type = "slides"
 title = "Rimi Product Scraper — Slide Deck"
+logical_id = "c1032d60-dd88-40a9-9439-ff86ebf299e6"
+
+[[outputs]]
+id = "b5b9nIN04tJiwOjnTdXSe"
+uri = "file://reports/production-missing-photos-after-retry.csv"
+type = "table"
+title = "Production products still missing photos"
+description = "94 product IDs and SKUs, each with its Rimi URL and 404 reason after the verified photo-only retry."
+logical_id = "7060f1b3-95f2-47ea-a670-808f40db763b"
+content_hash = "sha256:9b1a076540d007249372a1cc846241ac790c42e9a81d57026e0e75859c2afa5d"
+size = 8894
+mtime_ms = 1790591035768
+storage_uri = "gcs://replit-rams-assets-spock/rams/assets/repl:b8e1a031-5994-448b-94f4-c71917df22b3/7060f1b3-95f2-47ea-a670-808f40db763b/b5ace875-1396-4cc6-8497-42aa8dbdad40"
+storage_version_token = "1790591048312768"
+content_type = "text/csv"
