@@ -3,3 +3,4 @@
 - [Product NOVA classification](product-nova-classification.md) — nova_score + nova_source on products table; additive_override (avoid/limit) beats category_inherited; all 2966 products scored Jun 2026.
 - [Nutri-Score category typing](nutriscore-category-typing.md) — all table-backed score calculations resolve saved category types from normalized categories; category codes never classify products at runtime.
 - [Nutrition validation rollout](nutrition-validation-rollout.md) — schema is approved for publish-time migration; backfill remains separate and parsed mappings remain authoritative.
+- [Rimi photo metadata](rimi-photo-metadata.md) — product photos may appear only in og:image; verify the Cloudinary asset without its fallback before saving.
