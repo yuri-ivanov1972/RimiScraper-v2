@@ -27,6 +27,20 @@ Usage:
 """
 
 from typing import Any, Dict, Optional, Tuple
+import math
+
+
+def validate_fvl_percentage(value):
+    """None means category default; zero is a real product override."""
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("Fruit/vegetable/legume percentage must be between 0 and 100") from exc
+    if not math.isfinite(number) or not 0 <= number <= 100:
+        raise ValueError("Fruit/vegetable/legume percentage must be between 0 and 100")
+    return round(number, 2)
 
 
 _CATEGORY_TYPE_TO_SCORING_CATEGORY = {
@@ -336,12 +350,13 @@ class NutriscoreCalculator:
         protein: float,
         fiber: float = 0,
         total_fat: Optional[float] = None,
-        fruits_veg_nuts: float = 0,
+        fruits_veg_nuts: Optional[float] = None,
         category_code: Optional[str] = None,
         product_name: Optional[str] = None,
         ingredients_text: Optional[str] = None,
         has_sweeteners: Optional[bool] = None,
         category_id: Optional[int] = None,
+        product_id: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Calculate Nutri-Score for a single product using 2024 algorithm.
@@ -354,7 +369,8 @@ class NutriscoreCalculator:
             protein: Protein in g/100g
             fiber: Fiber in g/100g (default: 0)
             total_fat: Total fat in g/100g (needed for oils/fats calculation)
-            fruits_veg_nuts: % fruits/vegetables/nuts (default: 0, auto-detected from saved type)
+            fruits_veg_nuts: Explicit fruits/vegetables/legumes percentage, including zero.
+                None loads the product override if product_id is supplied, otherwise the category default.
             category_code: Retained product metadata; it does not affect classification.
             product_name: Product name (for sweetener detection)
             ingredients_text: Ingredients list (for sweetener detection)
@@ -369,7 +385,21 @@ class NutriscoreCalculator:
             ns_category = self._determine_category(category_type)
             
             fvl_pct = fruits_veg_nuts
-            if fvl_pct == 0:
+            if fvl_pct is None and product_id is not None:
+                with self.connection.cursor() as cur:
+                    cur.execute(
+                        "SELECT fruit_veg_legume_percent FROM nutritionfacts WHERE product_id = %s",
+                        (product_id,),
+                    )
+                    row = cur.fetchone()
+                    if row is not None:
+                        fvl_pct = (
+                            row.get("fruit_veg_legume_percent")
+                            if isinstance(row, dict) else row[0]
+                        )
+            fvl_pct = validate_fvl_percentage(fvl_pct)
+            fvl_source = "manual" if fvl_pct is not None else "category"
+            if fvl_pct is None:
                 fvl_pct = self._get_fvl_percentage(category_type)
             
             if has_sweeteners is None and ns_category == 'beverage':
@@ -407,6 +437,7 @@ class NutriscoreCalculator:
                     'is_cheese': ns_category == 'cheese',
                     'is_red_meat': ns_category == 'red_meat',
                     'fruits_veg_nuts_percent': fvl_pct,
+                    'fruit_veg_legume_source': fvl_source,
                     'has_sweeteners': has_sweeteners
                 }
             }
@@ -438,12 +469,13 @@ class NutriscoreCalculator:
                 protein=product.get('protein', 0),
                 fiber=product.get('fiber', 0),
                 total_fat=product.get('total_fat'),
-                fruits_veg_nuts=product.get('fruits_veg_nuts', 0),
+                fruits_veg_nuts=product.get('fruits_veg_nuts'),
                 category_code=product.get('category_code'),
                 product_name=product.get('product_name'),
                 ingredients_text=product.get('ingredients_text'),
                 has_sweeteners=product.get('has_sweeteners'),
                 category_id=product.get('category_id'),
+                product_id=product_id,
             )
             result['product_id'] = product_id
             results.append(result)

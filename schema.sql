@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS nutritionfacts (
     protein                 NUMERIC(10, 2),
     salt                    NUMERIC(10, 2),
     fiber                   NUMERIC(10, 2),
+    fruit_veg_legume_percent NUMERIC(5, 2)
+                            CHECK (fruit_veg_legume_percent BETWEEN 0 AND 100),
     nutri_score_grade       CHAR(1),
     nutri_score_points      INTEGER,
     data_source_date        TIMESTAMPTZ,

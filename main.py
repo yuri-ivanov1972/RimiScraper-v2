@@ -961,6 +961,7 @@ def section_product_view():
 
 def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
     """Render inline nutrition edit form with Nutri-Score recalculation"""
+    from nutrition_editing import save_nutrition_edit
     from nutriscore_calculator import NutriscoreCalculator
     
     product_id = product['product_id']
@@ -1039,6 +1040,28 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
             key=f"salt_{product_id}"
         )
         
+        saved_percentage = product.get("fruit_veg_legume_percent")
+        default_percentage = NutriscoreCalculator._get_fvl_percentage(
+            product.get("nutriscore_category_type") or "general"
+        )
+        use_category_percentage = st.checkbox(
+            "Izmantot kategorijas noklusējuma procentu",
+            value=saved_percentage is None,
+            key=f"fvl_category_default_{product_id}",
+            help="Atzīmējiet, lai dzēstu manuālo procentu un izmantotu kategorijas vērtību.",
+        )
+        fvl_percentage = st.number_input(
+            "Augļi, dārzeņi un pākšaugi (%)",
+            min_value=0.0, max_value=100.0, step=0.1, format="%.2f",
+            value=float(saved_percentage) if saved_percentage is not None else default_percentage,
+            key=f"fvl_percentage_{product_id}",
+            help="Lai saglabātu manuālu vērtību (arī 0%), noņemiet atzīmi par kategorijas noklusējumu.",
+        )
+        st.caption(
+            f"Kategorijas noklusējums: {default_percentage:g}%. "
+            "Manuālais procents tiek saglabāts arī pēc automātiskas datu atjaunošanas."
+        )
+
         manual_edit = st.checkbox(
             "Atzīmēt kā manuāli rediģētu (novērsīs automātisko pārrakstīšanu)",
             value=bool(product.get('nutrition_manual_edit')),
@@ -1049,61 +1072,19 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
         
         if submitted:
             try:
-                calculator = NutriscoreCalculator(db.connection)
-                nutri_result = calculator.calculate_single_product(
-                    energy_kj=energy_kj,
-                    sugars=carbs_sugars,
-                    saturated_fat=fat_saturated,
-                    salt=salt,
-                    protein=protein,
-                    fiber=fiber,
-                    total_fat=fat_total,
-                    category_code=product.get('rimi_category_code'),
-                    product_name=product.get('name'),
-                    ingredients_text=product.get('ingredients_text'),
-                    category_id=product.get('category_id'),
-                )
-                
-                new_grade = nutri_result.get('grade') if nutri_result.get('success') else product.get('nutri_score_grade')
-                new_score = nutri_result.get('score') if nutri_result.get('success') else product.get('nutri_score_points')
-                
-                update_query = """
-                    UPDATE nutritionfacts 
-                    SET energy_kj = %s,
-                        energy_kcal = %s,
-                        fat_total = %s,
-                        fat_saturated = %s,
-                        carbs_total = %s,
-                        carbs_sugars = %s,
-                        fiber = %s,
-                        protein = %s,
-                        salt = %s,
-                        nutri_score_grade = %s,
-                        nutri_score_points = %s,
-                        nutrition_manual_edit = %s,
-                        is_fiber_correct = %s
-                    WHERE product_id = %s
-                """
-                
                 db._ensure_connection()
-                with db.connection.cursor() as cur:
-                    cur.execute(update_query, (
-                        int(energy_kj) if energy_kj else None,
-                        int(energy_kcal) if energy_kcal else None,
-                        fat_total,
-                        fat_saturated,
-                        carbs_total,
-                        carbs_sugars,
-                        fiber,
-                        protein,
-                        salt,
-                        new_grade,
-                        new_score,
-                        manual_edit,
-                        True if fiber and fiber > 0 else False,  # Mark fiber as correct when manually edited
-                        product_id
-                    ))
-                    db.connection.commit()
+                result = save_nutrition_edit(
+                    db.connection, product_id,
+                    dict(
+                        energy_kj=int(energy_kj), energy_kcal=int(energy_kcal),
+                        fat_total=fat_total, fat_saturated=fat_saturated,
+                        carbs_total=carbs_total, carbs_sugars=carbs_sugars,
+                        fiber=fiber, protein=protein, salt=salt,
+                    ),
+                    None if use_category_percentage else fvl_percentage,
+                    manual_edit,
+                )
+                new_grade, new_score = result["grade"], result["score"]
                 
                 old_grade = product.get('nutri_score_grade', 'N/A')
                 st.success(f"Saglabāts! Nutri-Score: {old_grade} → {new_grade} ({new_score} punkti)")
@@ -1313,6 +1294,16 @@ def render_product_detail_view():
         if product.get('fiber') is not None:
             st.metric("Šķiedrvielas", f"{product['fiber']}g")
     
+    from nutriscore_calculator import NutriscoreCalculator
+    percentage = product.get("fruit_veg_legume_percent")
+    inherited = percentage is None
+    if inherited:
+        percentage = NutriscoreCalculator._get_fvl_percentage(
+            product.get("nutriscore_category_type") or "general"
+        )
+    source = "kategorijas noklusējums" if inherited else "manuāli ievadīts"
+    st.caption(f"Augļi, dārzeņi un pākšaugi: {float(percentage):g}% ({source})")
+
     if product.get('nutrition_manual_edit'):
         st.info("✏️ Šis produkts ir manuāli rediģēts - uzturvielu dati netiks pārrakstīti")
     
@@ -2769,6 +2760,7 @@ def recalculate_nutriscore_for_product_data(db: ProductViewDatabase, product: di
             product_name=product.get('name'),
             ingredients_text=product.get('ingredients_text'),
             category_id=product.get('category_id'),
+            product_id=product.get('product_id'),
         )
         
         if result['success']:
@@ -2937,6 +2929,7 @@ def section_fiber_estimation():
                         product_name=product.get('name'),
                         ingredients_text=product.get('ingredients_text'),
                         category_id=product.get('category_id'),
+                        product_id=product.get('product_id'),
                     )
                     if calc_result.get('success'):
                         new_grade = calc_result['grade']
@@ -3020,6 +3013,7 @@ def section_fiber_estimation():
                         product_name=result.get('name'),
                         ingredients_text=result.get('ingredients_text'),
                         category_id=result.get('category_id'),
+                        product_id=result.get('product_id'),
                     )
                     if calc_result.get('success'):
                         new_grade = calc_result['grade']

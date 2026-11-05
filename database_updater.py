@@ -284,7 +284,7 @@ class DatabaseUpdater:
             nutri_score_grade = None
             nutri_score_points = None
             
-            if not has_existing_nutriscore and energy_kj and energy_kj > 0 and carbs_sugars is not None and fat_saturated is not None and salt is not None and protein is not None:
+            if energy_kj and energy_kj > 0 and carbs_sugars is not None and fat_saturated is not None and salt is not None and protein is not None:
                 category_rows = self._execute_query(
                     "SELECT category_id FROM products WHERE product_id = %s",
                     (product_id,),
@@ -302,6 +302,7 @@ class DatabaseUpdater:
                     fiber=int(fiber) if fiber else 0,
                     total_fat=fat_total,
                     category_id=category_id,
+                    product_id=product_id,
                 )
                 
                 if nutri_result['success']:

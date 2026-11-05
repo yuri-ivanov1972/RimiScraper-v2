@@ -538,6 +538,7 @@ class NutritionEnrichmentService:
                     nutrition=nutrition,
                     category_id=match.product.category_id,
                     product_name=match.product.name,
+                    product_id=match.product.product_id,
                 )
                 
                 if nutri_score is not None:
@@ -619,6 +620,7 @@ class NutritionEnrichmentService:
         nutrition: NutritionData,
         category_id: Optional[int],
         product_name: Optional[str] = None,
+        product_id: Optional[int] = None,
     ) -> tuple:
         """Calculate nutri-score points and grade from nutrition data
         
@@ -647,6 +649,7 @@ class NutritionEnrichmentService:
                 total_fat=nutrition.fat_total,
                 product_name=product_name,
                 category_id=category_id,
+                product_id=product_id,
             )
             if not result.get("success"):
                 self.status_callback(

@@ -522,6 +522,7 @@ class EnhancedDatabaseUpdater:
                     product_name=product_name,
                     ingredients_text=ingredients_text,
                     category_id=category_id,
+                    product_id=product_id,
                 )
                 
                 # Handle result from NutriscoreCalculator
