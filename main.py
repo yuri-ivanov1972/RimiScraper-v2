@@ -1302,7 +1302,8 @@ def render_product_detail_view():
             product.get("nutriscore_category_type") or "general"
         )
     source = "kategorijas noklusējums" if inherited else "manuāli ievadīts"
-    st.caption(f"Augļi, dārzeņi un pākšaugi: {float(percentage):g}% ({source})")
+    st.metric("Augļi, dārzeņi un pākšaugi", f"{float(percentage):g}%")
+    st.caption(f"Avots: {source}")
 
     if product.get('nutrition_manual_edit'):
         st.info("✏️ Šis produkts ir manuāli rediģēts - uzturvielu dati netiks pārrakstīti")
