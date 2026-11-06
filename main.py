@@ -1044,18 +1044,19 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
         default_percentage = NutriscoreCalculator._get_fvl_percentage(
             product.get("nutriscore_category_type") or "general"
         )
-        use_category_percentage = st.checkbox(
-            "Izmantot kategorijas noklusējuma procentu",
-            value=saved_percentage is None,
-            key=f"fvl_category_default_{product_id}",
-            help="Atzīmējiet, lai dzēstu manuālo procentu un izmantotu kategorijas vērtību.",
-        )
+        percentage_key = f"fvl_percentage_{product_id}"
+        if percentage_key not in st.session_state:
+            st.session_state[percentage_key] = (
+                float(saved_percentage) if saved_percentage is not None else None
+            )
         fvl_percentage = st.number_input(
             "Augļi, dārzeņi un pākšaugi (%)",
             min_value=0.0, max_value=100.0, step=0.1, format="%.2f",
-            value=float(saved_percentage) if saved_percentage is not None else default_percentage,
-            key=f"fvl_percentage_{product_id}",
-            help="Lai saglabātu manuālu vērtību (arī 0%), noņemiet atzīmi par kategorijas noklusējumu.",
+            # Keep the widget nullable even when reopening a saved override.
+            value=None,
+            key=percentage_key,
+            placeholder="Tukšs — kategorijas noklusējums",
+            help="Ievadiet manuālu procentu (arī 0%). Izdzēsiet vērtību un saglabājiet, lai izmantotu kategorijas noklusējumu.",
         )
         st.caption(
             f"Kategorijas noklusējums: {default_percentage:g}%. "
@@ -1081,7 +1082,7 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
                         carbs_total=carbs_total, carbs_sugars=carbs_sugars,
                         fiber=fiber, protein=protein, salt=salt,
                     ),
-                    None if use_category_percentage else fvl_percentage,
+                    fvl_percentage,
                     manual_edit,
                 )
                 new_grade, new_score = result["grade"], result["score"]

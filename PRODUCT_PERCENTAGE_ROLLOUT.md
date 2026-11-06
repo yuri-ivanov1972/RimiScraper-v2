@@ -1,9 +1,10 @@
 # Fruit, vegetable and legume percentage
 
 In **Products → product details → edit nutrition**, enter a percentage between
-0 and 100 (up to two decimal places). Uncheck **Izmantot kategorijas noklusējuma
-procentu** to save an override, including an explicit 0%. Check it again and save
-to clear the override. The normal save button recalculates Nutri-Score.
+0 and 100 (up to two decimal places) to save a manual override, including an
+explicit 0%. Leave the field empty, or delete its contents and save, to use the
+category default shown below the field. There is no separate default checkbox.
+The normal save button recalculates Nutri-Score.
 
 The override is independent of the general manual-nutrition checkbox. Scraping,
 USDA enrichment and table-backed recalculations read it without overwriting it.

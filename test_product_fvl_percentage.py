@@ -170,39 +170,64 @@ def test_product_recalculation_and_batch_use_current_override(connection):
     assert result["classification"]["fruits_veg_nuts_percent"] == 0
 
 
-def test_products_editor_save_clear_and_reopen(connection):
+@pytest.mark.parametrize("percentage", [83.25, 0.0, 100.0])
+def test_products_editor_save_clear_and_reopen(connection, monkeypatch, percentage):
     from streamlit.testing.v1 import AppTest
+    import main
 
     save_nutrition_edit(connection, 1, VALUES, None, False)
+    def get_product_details(_):
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT nf.*, p.name, p.category_id, nc.nutriscore_category_type "
+                "FROM nutritionfacts nf JOIN products p USING(product_id) "
+                "JOIN normalized_categories nc USING(category_id)"
+            )
+            return dict(cur.fetchone(), sku="")
+
+    monkeypatch.setattr(main, "ProductViewDatabase", lambda: SimpleNamespace(
+        connection=connection, _ensure_connection=lambda: None, close=lambda: None,
+        get_product_details=get_product_details,
+    ))
+    monkeypatch.setattr(main, "render_nova_edit_form", lambda *_: None)
     code = """
 import streamlit as st
-from types import SimpleNamespace
-from main import render_nutrition_edit_form
-conn = st.session_state.test_connection
-with conn.cursor() as cur:
-    cur.execute('SELECT nf.*, p.name, p.category_id, nc.nutriscore_category_type FROM nutritionfacts nf JOIN products p USING(product_id) JOIN normalized_categories nc USING(category_id)')
-    product = dict(cur.fetchone())
-render_nutrition_edit_form(SimpleNamespace(connection=conn, _ensure_connection=lambda: None), product)
+from main import render_product_detail_view
+st.session_state.selected_product_id = 1
+render_product_detail_view()
 """
     app = AppTest.from_string(code)
-    app.session_state.test_connection = connection
     app.run(timeout=30)
     assert not app.exception
-    app.checkbox(key="fvl_category_default_1").uncheck()
-    app.number_input(key="fvl_percentage_1").set_value(83.25)
-    app.button[0].click().run()
+    assert app.metric[-1].value == "100%"
+    # Reproduce the reported action: type a number and save, no checkbox step.
+    app.number_input(key="fvl_percentage_1").set_value(percentage)
+    next(b for b in app.button if "Saglabāt" in b.label).click().run()
     assert not app.exception
-    assert float(stored(connection)["fruit_veg_legume_percent"]) == 83.25
-    app.checkbox(key="fvl_category_default_1").check()
-    app.button[0].click().run()
-    assert not app.exception
-    assert stored(connection)["fruit_veg_legume_percent"] is None
+    assert not app.error
+    assert float(stored(connection)["fruit_veg_legume_percent"]) == percentage
+    assert app.metric[-1].value == f"{percentage:g}%"
+    assert any(c.value == "Avots: manuāli ievadīts" for c in app.caption)
+    expected = calculate(connection, fruits_veg_nuts=percentage)
+    assert stored(connection)["nutri_score_points"] == expected["score"]
 
     reopened = AppTest.from_string(code)
-    reopened.session_state.test_connection = connection
     reopened.run()
-    assert reopened.checkbox(key="fvl_category_default_1").value
-    assert reopened.number_input(key="fvl_percentage_1").value == 100
+    assert not reopened.exception
+    assert reopened.number_input(key="fvl_percentage_1").value == percentage
+    assert reopened.metric[-1].value == f"{percentage:g}%"
+    reopened.number_input(key="fvl_percentage_1").set_value(None)
+    next(b for b in reopened.button if "Saglabāt" in b.label).click().run()
+    assert not reopened.exception
+    assert not reopened.error
+    assert stored(connection)["fruit_veg_legume_percent"] is None
+    assert reopened.metric[-1].value == "100%"
+    assert any(c.value == "Avots: kategorijas noklusējums" for c in reopened.caption)
+    assert stored(connection)["nutri_score_points"] == calculate(connection)["score"]
+    fresh = AppTest.from_string(code).run()
+    assert not fresh.exception
+    assert fresh.number_input(key="fvl_percentage_1").value is None
+    assert fresh.metric[-1].value == "100%"
 
 
 def test_development_schema_setup_refuses_production(monkeypatch):
