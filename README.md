@@ -76,6 +76,7 @@ Many of them read or write a real database, so check what a test touches before 
 
 ## Further documentation
 
+- `ARCHITECTURE.md`: components, job queue, data model, scoring formulas
 - `replit.md`: full architecture notes and schema facts
 - `WORKER_USAGE.md`: worker CLI and job queue
 - `DAILY_UPDATES_GUIDE.md`: scheduled updates
