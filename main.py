@@ -1062,6 +1062,14 @@ def render_nutrition_edit_form(db: 'ProductViewDatabase', product: dict):
             f"Kategorijas noklusējums: {default_percentage:g}%. "
             "Manuālais procents tiek saglabāts arī pēc automātiskas datu atjaunošanas."
         )
+        if product.get("nutriscore_category_type") == "fat_oil_nut":
+            st.caption(
+                "Tauku, eļļu, riekstu un sēklu kategorijā FVL ieskaita arī eļļas, "
+                "kas iegūtas no FVL sastāvdaļas visas ēdamās daļas: piemēram, "
+                "olīvu, avokado un sojas eļļu. Vīnogu kauliņu eļļu neieskaita. "
+                "Rieksti un sēklas paši par sevi FVL procentu nepalielina. "
+                "Norādiet atbilstošo īpatsvaru manuāli; tas netiek noteikts automātiski."
+            )
 
         manual_edit = st.checkbox(
             "Atzīmēt kā manuāli rediģētu (novērsīs automātisko pārrakstīšanu)",

@@ -10,6 +10,26 @@ The override is independent of the general manual-nutrition checkbox. Scraping,
 USDA enrichment and table-backed recalculations read it without overwriting it.
 It counts fruit, vegetables and legumes, not nuts.
 
+## Qualifying oils in the fats, oils, nuts and seeds category
+
+For products assigned the saved `fat_oil_nut` category type, FVL also includes
+qualifying oils derived from the **entire edible part** of an FVL ingredient,
+such as olive, avocado and soybean oils. Grapeseed oil does not qualify. Nuts
+and seeds do not count toward FVL merely because they belong to this category.
+Enter the eligible share manually: no percentage is inferred from the product
+name and no saved override or category default is changed automatically.
+
+The updated category calculation excludes protein when negative points N are
+**7 or more**, even with five FVL points. Saturates/total-fat ratio boundaries
+are strict: exactly 10% earns one point and exactly 64% earns ten points.
+Energy remains saturated fat (g/100g) × 37 kJ, with 120-kJ point intervals.
+Category grades remain A ≤ −6, B −5–2, C 3–10, D 11–18, E ≥19.
+
+Reference: [Santé publique France FAQ, 17 March 2025, updated algorithm,
+tables 7–8](https://www.santepubliquefrance.fr/sites/default/files/rdd/document/FAQ-updatedAlgo-V11.pdf).
+These code corrections do not bulk-recalculate stored scores. Existing grades
+need a separately approved recalculation to reflect them.
+
 ## Schema rollout
 
 Development has the nullable `nutritionfacts.fruit_veg_legume_percent` column

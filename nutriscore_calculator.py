@@ -157,10 +157,14 @@ def calculate_nutriscore_2024(
         p_energy = get_points(energy_from_satfat, [120 * i for i in range(1, 11)])
         
         if total_fat_g and total_fat_g > 0:
-            ratio = (sat_fat_g / total_fat_g) * 100
+            # Strict upper bounds: exactly 10% earns 1 point, 64% earns 10.
+            # Cross-multiply to avoid division rounding an exact boundary down.
+            p_satfat = sum(
+                sat_fat_g * 100 >= threshold * total_fat_g
+                for threshold in [10, 16, 22, 28, 34, 40, 46, 52, 58, 64]
+            )
         else:
-            ratio = 0
-        p_satfat = get_points(ratio, [10, 16, 22, 28, 34, 40, 46, 52, 58, 64])
+            p_satfat = 0
         
         p_sugar = get_points(sugars_g, t_sugar_gen)
         p_salt = get_points(salt_g, t_salt_gen)
@@ -191,7 +195,14 @@ def calculate_nutriscore_2024(
     
     final_score = total_n - total_p
     
-    if category not in ['cheese', 'beverage']:
+    if category == 'fats_oils_nuts':
+        # Updated algorithm, FAQ tables 7–8: no FVL-based protein exemption.
+        if total_n >= 7:
+            p_protein = 0
+            total_p = p_fiber + p_fvl
+            final_score = total_n - total_p
+            protein_status = f"blocked (N={total_n} >= 7)"
+    elif category not in ['cheese', 'beverage']:
         if total_n >= 11 and p_fvl < 5:
             final_score = total_n - (p_fiber + p_fvl)
             protein_status = f"blocked (N={total_n}, FVL={p_fvl})"
