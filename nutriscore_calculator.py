@@ -220,7 +220,7 @@ def calculate_nutriscore_2024(
         else:
             grade = "E"
     else:
-        if final_score <= -1:
+        if final_score < 1:
             grade = "A"
         elif final_score <= 2:
             grade = "B"
